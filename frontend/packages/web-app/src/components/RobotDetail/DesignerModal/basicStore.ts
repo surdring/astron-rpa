@@ -1,0 +1,43 @@
+import { createInjectionState } from '@vueuse/core'
+import { onBeforeMount, ref, shallowRef } from 'vue'
+
+import { rpaApi } from '@rpa/shared'
+import { VIEW_OWN } from '@/constants/resource'
+
+import type { Version } from '../components/VersionTable/index.vue'
+
+interface BasicContentData {
+  createTime: string // 创建时间
+  creatorName: string // 创建者姓名
+  introduction: string // 简介
+  name: string // 应用姓名
+  version: number // 版本号
+  filePath: string // 文件路径
+  fileName: string // 文件名
+  videoName?: string // 视频名称
+  videoPath?: string // 视频路径
+  useDescription: string // 使用说明
+  sourceName?: string // 来源
+  versionList?: Version[] // 版本列表
+}
+
+const [useProvideBasicStore, useBasicStore] = createInjectionState((robotId: string, source: string) => {
+  const loading = ref(false)
+  const data = shallowRef<BasicContentData>(null)
+
+  onBeforeMount(async () => {
+    loading.value = true
+    const apiFn = source === VIEW_OWN
+      ? () => rpaApi.robots.getMyRobotDetail(robotId).then(r => r.data)
+      : () => rpaApi.robots.getMarketRobotDetail(robotId).then(r => {
+          const { myRobotDetailVo, sourceName, versionInfoList } = r.data
+          return { ...myRobotDetailVo, sourceName, versionList: versionInfoList }
+        })
+    data.value = await apiFn()
+    loading.value = false
+  })
+
+  return { loading, data }
+})
+
+export { useBasicStore, useProvideBasicStore }

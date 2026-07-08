@@ -1,0 +1,9 @@
+{
+  "name": "test-insforge-sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@insforge/sdk": "latest"
+  }
+}

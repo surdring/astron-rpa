@@ -1,0 +1,45 @@
+-- pgloader migration configuration for AstronRPA
+-- Migrates MySQL 8.4.6 data to PostgreSQL 18 (InsForge)
+--
+-- Usage:
+--   pgloader migrate.load
+--
+-- Prerequisites:
+--   - apt-get install pgloader
+--   - MySQL running on 172.16.100.211:3306
+--   - PostgreSQL running on 172.16.100.211:5432
+--   - Backup MySQL before running: mysqldump -h 172.16.100.211 -u root -p astron_rpa > backup.sql
+
+LOAD DATABASE
+  FROM mysql://root:password@172.16.100.211:3306/astron_rpa
+  INTO postgresql://postgres:xqxatcdj@172.16.100.211:5432/insforge
+
+WITH
+  create_tables = true,
+  create_indexes = true,
+  reset_sequences = true,
+  disable_triggers = true
+
+ALTER SCHEMA 'astron_rpa' RENAME TO 'public'
+
+CAST
+  type datetime to timestamptz drop default drop not null using zero-dates-to-null,
+  type tinyint to boolean using tinyint-to-boolean,
+  type json to jsonb;
+
+-- ============================================================
+-- Post-migration verification queries
+-- ============================================================
+-- Run after migration to verify data integrity:
+--
+-- psql -h 172.16.100.211 -U postgres -d insforge -c "
+-- SELECT
+--   'robots' AS table_name, COUNT(*) AS row_count FROM public.robots
+-- UNION ALL SELECT 'projects', COUNT(*) FROM public.projects
+-- UNION ALL SELECT 'workflows', COUNT(*) FROM public.workflows
+-- UNION ALL SELECT 'tasks', COUNT(*) FROM public.tasks
+-- UNION ALL SELECT 'executions', COUNT(*) FROM public.executions
+-- UNION ALL SELECT 'execution_logs', COUNT(*) FROM public.execution_logs
+-- UNION ALL SELECT 'market_components', COUNT(*) FROM public.market_components
+-- UNION ALL SELECT 'triggers', COUNT(*) FROM public.triggers;
+-- "

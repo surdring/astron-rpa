@@ -1,0 +1,929 @@
+## On this page
+
+* [Overview](#overview)
+* [Headers](#headers)
+* [Query Records](#query-records)
+  + [Query Parameters](#query-parameters)
+  + [Filter Operators](#filter-operators)
+  + [Example](#example)
+  + [Response](#response)
+  + [Response Headers](#response-headers)
+* [Create Records](#create-records)
+  + [Headers](#headers-2)
+  + [Example](#example-2)
+  + [Response](#response-2)
+* [Update Records](#update-records)
+  + [Query Parameters](#query-parameters-2)
+  + [Headers](#headers-3)
+  + [Example](#example-3)
+  + [Response](#response-3)
+* [Delete Records](#delete-records)
+  + [Query Parameters](#query-parameters-3)
+  + [Headers](#headers-4)
+  + [Example](#example-4)
+  + [Response](#response-4)
+* [Error Responses](#error-responses)
+  + [Table Not Found (404)](#table-not-found-404)
+  + [Invalid Query (400)](#invalid-query-400)
+  + [Validation Error (400)](#validation-error-400)
+* [Examples](#examples)
+  + [Pagination](#pagination)
+  + [Complex Filters](#complex-filters)
+  + [Upsert (Insert or Update)](#upsert-insert-or-update)
+  + [Headers](#headers-5)
+  + [Example](#example-5)
+  + [Response](#response-5)
+* [Call RPC Function](#call-rpc-function)
+  + [Example](#example-6)
+  + [Response](#response-6)
+* [Admin Endpoints](#admin-endpoints)
+  + [Headers for Admin Endpoints](#headers-for-admin-endpoints)
+* [List Database Functions](#list-database-functions)
+  + [Example](#example-7)
+  + [Response](#response-7)
+* [List Database Indexes](#list-database-indexes)
+  + [Example](#example-8)
+  + [Response](#response-8)
+* [List RLS Policies](#list-rls-policies)
+  + [Example](#example-9)
+  + [Response](#response-9)
+* [List Database Triggers](#list-database-triggers)
+  + [Example](#example-10)
+  + [Response](#response-10)
+* [List Database Migrations](#list-database-migrations)
+  + [Example](#example-11)
+  + [Response](#response-11)
+* [Create Database Migration](#create-database-migration)
+  + [Request Body](#request-body)
+  + [Example](#example-12)
+  + [Response](#response-12)
+* [Execute Raw SQL (Strict Mode)](#execute-raw-sql-strict-mode)
+  + [Request Body](#request-body-2)
+  + [Example](#example-13)
+  + [Response](#response-13)
+* [Execute Raw SQL (Relaxed Mode)](#execute-raw-sql-relaxed-mode)
+  + [Request Body](#request-body-3)
+  + [Example](#example-14)
+  + [Response](#response-14)
+* [Export Database](#export-database)
+  + [Request Body](#request-body-4)
+  + [Example](#example-15)
+  + [Response](#response-15)
+* [Import Database](#import-database)
+  + [Request (multipart/form-data)](#request-multipart%2Fform-data)
+  + [Example](#example-16)
+  + [Response](#response-16)
+* [Bulk Upsert](#bulk-upsert)
+  + [Request (multipart/form-data)](#request-multipart%2Fform-data-2)
+  + [Example](#example-17)
+  + [Response](#response-17)
+
+REST API
+
+# Database API Reference
+
+Copy page
+
+PostgREST-style database operations via REST API
+
+Copy page
+
+## [​](#overview) Overview
+
+The Database API provides PostgREST-style CRUD operations for your database tables. All requests require authentication headers.
+
+## [​](#headers) Headers
+
+```
+Authorization: Bearer your-jwt-token-or-anon-key
+Content-Type: application/json
+```
+
+---
+
+## [​](#query-records) Query Records
+
+Retrieve records from a table with filtering, sorting, and pagination.
+
+```
+GET /api/database/records/{tableName}
+```
+
+### [​](#query-parameters) Query Parameters
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `limit` | integer | Maximum records to return (1-1000, default: 100) |
+| `offset` | integer | Records to skip for pagination (default: 0) |
+| `order` | string | Sort order (e.g., `createdAt.desc`, `name.asc`) |
+| `select` | string | Comma-separated columns to return |
+| `{field}` | string | PostgREST filter (e.g., `status=eq.active`) |
+
+### [​](#filter-operators) Filter Operators
+
+| Operator | Description | Example |
+| --- | --- | --- |
+| `eq` | Equal | `status=eq.active` |
+| `neq` | Not equal | `status=neq.deleted` |
+| `gt` | Greater than | `age=gt.18` |
+| `gte` | Greater than or equal | `price=gte.100` |
+| `lt` | Less than | `quantity=lt.10` |
+| `lte` | Less than or equal | `score=lte.50` |
+| `like` | Pattern match (case-sensitive) | `name=like.*john*` |
+| `ilike` | Pattern match (case-insensitive) | `email=ilike.*@gmail.com` |
+| `in` | In list | `status=in.(active,pending)` |
+| `is` | Is null/true/false | `deleted_at=is.null` |
+
+### [​](#example) Example
+
+```
+# Get all posts
+curl "https://your-app.insforge.app/api/database/records/posts" \
+  -H "Authorization: Bearer your-jwt-token"
+
+# Get posts with filters
+curl "https://your-app.insforge.app/api/database/records/posts?status=eq.published&order=createdAt.desc&limit=10" \
+  -H "Authorization: Bearer your-jwt-token"
+
+# Select specific columns
+curl "https://your-app.insforge.app/api/database/records/posts?select=id,title,author" \
+  -H "Authorization: Bearer your-jwt-token"
+```
+
+### [​](#response) Response
+
+```
+[
+  {
+    "id": "248373e1-0aea-45ce-8844-5ef259203749",
+    "title": "Getting Started with InsForge",
+    "content": "This is a guide to help you get started...",
+    "createdAt": "2025-07-18T05:37:24.338Z",
+    "updatedAt": "2025-07-18T05:37:24.338Z"
+  }
+]
+```
+
+### [​](#response-headers) Response Headers
+
+| Header | Description |
+| --- | --- |
+| `X-Total-Count` | Total records matching the query |
+| `Content-Range` | Range of records returned (e.g., `0-99/1234`) |
+
+---
+
+## [​](#create-records) Create Records
+
+Create one or more records in a table.
+
+```
+POST /api/database/records/{tableName}
+```
+
+**Important**: Request body MUST be an array, even for single records.
+
+### [​](#headers-2) Headers
+
+| Header | Value | Description |
+| --- | --- | --- |
+| `Prefer` | `return=representation` | Include to return created records |
+
+### [​](#example-2) Example
+
+```
+# Create a single record
+curl -X POST "https://your-app.insforge.app/api/database/records/posts" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=representation" \
+  -d '[{
+    "title": "My First Post",
+    "content": "Hello world!",
+    "published": true
+  }]'
+
+# Create multiple records
+curl -X POST "https://your-app.insforge.app/api/database/records/posts" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=representation" \
+  -d '[
+    {"title": "Post 1", "content": "Content 1"},
+    {"title": "Post 2", "content": "Content 2"}
+  ]'
+```
+
+### [​](#response-2) Response
+
+Without `Prefer` header:
+
+```
+[]
+```
+
+With `Prefer: return=representation`:
+
+```
+[
+  {
+    "id": "248373e1-0aea-45ce-8844-5ef259203749",
+    "title": "My First Post",
+    "content": "Hello world!",
+    "published": true,
+    "createdAt": "2025-07-18T05:37:24.338Z",
+    "updatedAt": "2025-07-18T05:37:24.338Z"
+  }
+]
+```
+
+---
+
+## [​](#update-records) Update Records
+
+Update records matching query filters.
+
+```
+PATCH /api/database/records/{tableName}
+```
+
+### [​](#query-parameters-2) Query Parameters
+
+Use filter operators to specify which records to update.
+
+### [​](#headers-3) Headers
+
+| Header | Value | Description |
+| --- | --- | --- |
+| `Prefer` | `return=representation` | Include to return updated records |
+
+### [​](#example-3) Example
+
+```
+# Update a single record by ID
+curl -X PATCH "https://your-app.insforge.app/api/database/records/posts?id=eq.248373e1-0aea-45ce-8844-5ef259203749" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=representation" \
+  -d '{
+    "title": "Updated Post Title",
+    "content": "This content has been updated."
+  }'
+
+# Update multiple records
+curl -X PATCH "https://your-app.insforge.app/api/database/records/posts?status=eq.draft" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "archived"}'
+```
+
+### [​](#response-3) Response
+
+```
+[
+  {
+    "id": "248373e1-0aea-45ce-8844-5ef259203749",
+    "title": "Updated Post Title",
+    "content": "This content has been updated.",
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-21T11:00:00Z"
+  }
+]
+```
+
+---
+
+## [​](#delete-records) Delete Records
+
+Delete records matching query filters.
+
+```
+DELETE /api/database/records/{tableName}
+```
+
+### [​](#query-parameters-3) Query Parameters
+
+Use filter operators to specify which records to delete.
+
+### [​](#headers-4) Headers
+
+| Header | Value | Description |
+| --- | --- | --- |
+| `Prefer` | `return=representation` | Include to return deleted records |
+
+### [​](#example-4) Example
+
+```
+# Delete by ID
+curl -X DELETE "https://your-app.insforge.app/api/database/records/posts?id=eq.248373e1-0aea-45ce-8844-5ef259203749" \
+  -H "Authorization: Bearer your-jwt-token"
+
+# Delete with Prefer header to see deleted records
+curl -X DELETE "https://your-app.insforge.app/api/database/records/posts?status=eq.archived" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Prefer: return=representation"
+```
+
+### [​](#response-4) Response
+
+Without `Prefer` header: `204 No Content`
+With `Prefer: return=representation`:
+
+```
+[
+  {
+    "id": "248373e1-0aea-45ce-8844-5ef259203749",
+    "title": "Deleted Post",
+    "createdAt": "2025-01-01T00:00:00Z"
+  }
+]
+```
+
+---
+
+## [​](#error-responses) Error Responses
+
+### [​](#table-not-found-404) Table Not Found (404)
+
+```
+{
+  "error": "TABLE_NOT_FOUND",
+  "message": "Table 'nonexistent' does not exist",
+  "statusCode": 404,
+  "nextActions": "Check table name and try again"
+}
+```
+
+### [​](#invalid-query-400) Invalid Query (400)
+
+```
+{
+  "error": "INVALID_QUERY",
+  "message": "Invalid filter syntax",
+  "statusCode": 400,
+  "nextActions": "Check PostgREST filter documentation"
+}
+```
+
+### [​](#validation-error-400) Validation Error (400)
+
+```
+{
+  "error": "VALIDATION_ERROR",
+  "message": "Invalid field type: expected boolean for 'published'",
+  "statusCode": 400,
+  "nextActions": "Ensure field types match the table schema"
+}
+```
+
+---
+
+## [​](#examples) Examples
+
+### [​](#pagination) Pagination
+
+```
+# Page 1 (first 20 records)
+curl "https://your-app.insforge.app/api/database/records/posts?limit=20&offset=0"
+
+# Page 2 (next 20 records)
+curl "https://your-app.insforge.app/api/database/records/posts?limit=20&offset=20"
+```
+
+### [​](#complex-filters) Complex Filters
+
+```
+# Multiple conditions
+curl "https://your-app.insforge.app/api/database/records/posts?status=eq.published&author_id=eq.123&order=createdAt.desc"
+
+# Search with pattern
+curl "https://your-app.insforge.app/api/database/records/users?email=ilike.*@company.com"
+
+# In list
+curl "https://your-app.insforge.app/api/database/records/orders?status=in.(pending,processing)"
+
+# Null check
+curl "https://your-app.insforge.app/api/database/records/tasks?completed_at=is.null"
+```
+
+### [​](#upsert-insert-or-update) Upsert (Insert or Update)
+
+Insert a record or update it if a conflict occurs on a unique constraint.
+
+```
+POST /api/database/records/{tableName}
+```
+
+#### [​](#headers-5) Headers
+
+| Header | Value | Description |
+| --- | --- | --- |
+| `Prefer` | `resolution=merge-duplicates` | Update existing record on conflict |
+| `Prefer` | `resolution=ignore-duplicates` | Ignore insert if record exists |
+
+#### [​](#example-5) Example
+
+```
+# Upsert: insert or update on conflict
+curl -X POST "https://your-app.insforge.app/api/database/records/user_settings" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: resolution=merge-duplicates,return=representation" \
+  -d '[{
+    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+    "theme": "dark",
+    "notifications": true
+  }]'
+```
+
+#### [​](#response-5) Response
+
+```
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+    "theme": "dark",
+    "notifications": true,
+    "createdAt": "2025-01-01T00:00:00Z",
+    "updatedAt": "2025-01-21T11:00:00Z"
+  }
+]
+```
+
+Upsert requires a unique constraint (e.g., primary key or unique index) on the table. The conflict resolution is based on this constraint.
+
+---
+
+## [​](#call-rpc-function) Call RPC Function
+
+Execute a database function via PostgREST RPC. Supports all HTTP methods (GET, POST, PUT, PATCH, DELETE).
+
+```
+POST /api/database/rpc/{functionName}
+```
+
+### [​](#example-6) Example
+
+```
+# Call a function with parameters
+curl -X POST "https://your-app.insforge.app/api/database/rpc/get_user_stats" \
+  -H "Authorization: Bearer your-jwt-token" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "123e4567-e89b-12d3-a456-426614174000"}'
+
+# Call a function without parameters
+curl -X POST "https://your-app.insforge.app/api/database/rpc/get_total_count" \
+  -H "Authorization: Bearer your-jwt-token"
+```
+
+### [​](#response-6) Response
+
+```
+{
+  "total_posts": 42,
+  "total_comments": 128,
+  "last_activity": "2025-01-15T10:30:00Z"
+}
+```
+
+---
+
+## [​](#admin-endpoints) Admin Endpoints
+
+The following endpoints require admin authentication.
+
+### [​](#headers-for-admin-endpoints) Headers for Admin Endpoints
+
+```
+Authorization: Bearer admin-jwt-token-Or-API-Key
+Content-Type: application/json
+```
+
+---
+
+## [​](#list-database-functions) List Database Functions
+
+Get all database functions in the public schema. **Requires admin authentication.**
+
+```
+GET /api/database/functions
+```
+
+### [​](#example-7) Example
+
+```
+curl "https://your-app.insforge.app/api/database/functions" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key"
+```
+
+### [​](#response-7) Response
+
+```
+[
+  {
+    "name": "get_user_stats",
+    "schema": "public",
+    "language": "plpgsql",
+    "returnType": "json",
+    "arguments": "user_id uuid",
+    "definition": "BEGIN ... END;"
+  }
+]
+```
+
+---
+
+## [​](#list-database-indexes) List Database Indexes
+
+Get all database indexes. **Requires admin authentication.**
+
+```
+GET /api/database/indexes
+```
+
+### [​](#example-8) Example
+
+```
+curl "https://your-app.insforge.app/api/database/indexes" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key"
+```
+
+### [​](#response-8) Response
+
+```
+[
+  {
+    "name": "posts_pkey",
+    "tableName": "posts",
+    "columns": ["id"],
+    "isUnique": true,
+    "isPrimary": true,
+    "definition": "CREATE UNIQUE INDEX posts_pkey ON public.posts USING btree (id)"
+  }
+]
+```
+
+---
+
+## [​](#list-rls-policies) List RLS Policies
+
+Get all Row Level Security policies. **Requires admin authentication.**
+
+```
+GET /api/database/policies
+```
+
+### [​](#example-9) Example
+
+```
+curl "https://your-app.insforge.app/api/database/policies" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key"
+```
+
+### [​](#response-9) Response
+
+```
+[
+  {
+    "name": "Users can view own posts",
+    "tableName": "posts",
+    "command": "SELECT",
+    "roles": ["authenticated"],
+    "using": "(auth.uid() = user_id)",
+    "withCheck": null
+  }
+]
+```
+
+---
+
+## [​](#list-database-triggers) List Database Triggers
+
+Get all database triggers. **Requires admin authentication.**
+
+```
+GET /api/database/triggers
+```
+
+### [​](#example-10) Example
+
+```
+curl "https://your-app.insforge.app/api/database/triggers" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key"
+```
+
+### [​](#response-10) Response
+
+```
+[
+  {
+    "name": "update_timestamp",
+    "tableName": "posts",
+    "timing": "BEFORE",
+    "events": ["UPDATE"],
+    "functionName": "update_updated_at_column",
+    "enabled": true
+  }
+]
+```
+
+---
+
+## [​](#list-database-migrations) List Database Migrations
+
+Get the history of successful custom migrations. InsForge stores these in `system.custom_migrations`, but the endpoint returns only the migration metadata and executed statements. **Requires admin authentication.**
+
+```
+GET /api/database/migrations
+```
+
+### [​](#example-11) Example
+
+```
+curl "https://your-app.insforge.app/api/database/migrations" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key"
+```
+
+### [​](#response-11) Response
+
+```
+{
+  "migrations": [
+    {
+      "version": "20260416170500",
+      "name": "create-posts-table",
+      "statements": [
+        "CREATE TABLE posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), title TEXT NOT NULL);"
+      ],
+      "createdAt": "2026-04-16T17:05:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+## [​](#create-database-migration) Create Database Migration
+
+Create and immediately execute a custom migration against the database. The migration is recorded only if every statement succeeds. **Requires admin authentication.**
+
+```
+POST /api/database/migrations
+```
+
+### [​](#request-body) Request Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `version` | string | Yes | Numeric migration version (up to 64 digits). Accepts Drizzle-style sequential prefixes (e.g. `0001`) or a `YYYYMMDDHHmmss` timestamp. Versions are compared numerically. The InsForge CLI generates 14-digit UTC timestamps for local migration filenames. |
+| `name` | string | Yes | Migration name using lowercase letters, numbers, and hyphens only |
+| `sql` | string | Yes | SQL text to parse and execute |
+
+### [​](#example-12) Example
+
+```
+curl -X POST "https://your-app.insforge.app/api/database/migrations" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": "20260416170500",
+    "name": "create-posts-table",
+    "sql": "CREATE TABLE posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), title TEXT NOT NULL);"
+  }'
+```
+
+### [​](#response-12) Response
+
+```
+{
+  "version": "20260416170500",
+  "name": "create-posts-table",
+  "statements": [
+    "CREATE TABLE posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), title TEXT NOT NULL);"
+  ],
+  "createdAt": "2026-04-16T17:05:00.000Z",
+  "message": "Migration executed successfully"
+}
+```
+
+Do not include `BEGIN`, `COMMIT`, or `ROLLBACK` inside a custom migration. InsForge executes the migration inside its own transaction.
+
+---
+
+## [​](#execute-raw-sql-strict-mode) Execute Raw SQL (Strict Mode)
+
+Execute raw SQL query with strict sanitization. Blocks access to system tables and auth.users. **Requires admin authentication.**
+
+```
+POST /api/database/advance/rawsql
+```
+
+### [​](#request-body-2) Request Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | Yes | SQL query to execute |
+| `params` | array | No | Query parameters for parameterized queries |
+
+### [​](#example-13) Example
+
+```
+curl -X POST "https://your-app.insforge.app/api/database/advance/rawsql" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "SELECT * FROM posts WHERE published = $1",
+    "params": [true]
+  }'
+```
+
+### [​](#response-13) Response
+
+```
+{
+  "rows": [
+    {
+      "id": "248373e1-0aea-45ce-8844-5ef259203749",
+      "title": "My Post",
+      "published": true
+    }
+  ],
+  "rowCount": 1,
+  "command": "SELECT"
+}
+```
+
+---
+
+## [​](#execute-raw-sql-relaxed-mode) Execute Raw SQL (Relaxed Mode)
+
+Execute raw SQL query with relaxed sanitization. Allows SELECT and INSERT into system tables. **Use with caution. Requires admin authentication.**
+
+```
+POST /api/database/advance/rawsql/unrestricted
+```
+
+### [​](#request-body-3) Request Body
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `query` | string | Yes | SQL query to execute |
+| `params` | array | No | Query parameters for parameterized queries |
+
+### [​](#example-14) Example
+
+```
+curl -X POST "https://your-app.insforge.app/api/database/advance/rawsql/unrestricted" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "SELECT * FROM auth.users LIMIT 10"
+  }'
+```
+
+### [​](#response-14) Response
+
+```
+{
+  "rows": [...],
+  "rowCount": 10,
+  "command": "SELECT"
+}
+```
+
+This endpoint has relaxed restrictions and can access system tables. Use only when necessary and ensure proper authorization.
+
+---
+
+## [​](#export-database) Export Database
+
+Export database schema and/or data in SQL or JSON format. **Requires admin authentication.**
+
+```
+POST /api/database/advance/export
+```
+
+### [​](#request-body-4) Request Body
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `tables` | array | No | all | List of tables to export |
+| `format` | string | No | sql | Export format (`sql` or `json`) |
+| `includeData` | boolean | No | true | Include table data |
+| `includeFunctions` | boolean | No | false | Include database functions |
+| `includeSequences` | boolean | No | false | Include sequences |
+| `includeViews` | boolean | No | false | Include views |
+| `rowLimit` | integer | No | - | Maximum rows per table |
+
+### [​](#example-15) Example
+
+```
+curl -X POST "https://your-app.insforge.app/api/database/advance/export" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tables": ["posts", "comments"],
+    "format": "sql",
+    "includeData": true,
+    "rowLimit": 1000
+  }'
+```
+
+### [​](#response-15) Response
+
+```
+{
+  "format": "sql",
+  "content": "CREATE TABLE posts (...); INSERT INTO posts VALUES (...);",
+  "tables": ["posts", "comments"]
+}
+```
+
+---
+
+## [​](#import-database) Import Database
+
+Import database from SQL file. **Requires admin authentication.**
+
+```
+POST /api/database/advance/import
+```
+
+### [​](#request-multipart/form-data) Request (multipart/form-data)
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `file` | file | Yes | - | SQL file to import |
+| `truncate` | boolean | No | false | Truncate existing tables before import |
+
+### [​](#example-16) Example
+
+```
+curl -X POST "https://your-app.insforge.app/api/database/advance/import" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -F "file=@backup.sql" \
+  -F "truncate=false"
+```
+
+### [​](#response-16) Response
+
+```
+{
+  "filename": "backup.sql",
+  "fileSize": 102400,
+  "tables": ["posts", "comments", "users"],
+  "rowsImported": 1500
+}
+```
+
+---
+
+## [​](#bulk-upsert) Bulk Upsert
+
+Bulk insert or update data from CSV or JSON file. **Requires admin authentication.**
+
+```
+POST /api/database/advance/bulk-upsert
+```
+
+### [​](#request-multipart/form-data-2) Request (multipart/form-data)
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | file | Yes | CSV or JSON file containing data |
+| `table` | string | Yes | Target table name |
+| `upsertKey` | string | No | Column name for upsert conflict resolution |
+
+### [​](#example-17) Example
+
+```
+# Import from CSV
+curl -X POST "https://your-app.insforge.app/api/database/advance/bulk-upsert" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -F "file=@data.csv" \
+  -F "table=posts" \
+  -F "upsertKey=id"
+
+# Import from JSON
+curl -X POST "https://your-app.insforge.app/api/database/advance/bulk-upsert" \
+  -H "Authorization: Bearer admin-jwt-token-Or-API-Key" \
+  -F "file=@data.json" \
+  -F "table=posts"
+```
+
+### [​](#response-17) Response
+
+```
+{
+  "rowsAffected": 150,
+  "totalRecords": 150,
+  "table": "posts"
+}
+```
+
+[REST API](/sdks/rest/overview)[Authentication API Reference](/sdks/rest/auth)
+
+⌘I
+
+[x](https://x.com/InsForge_dev)[github](https://github.com/InsForge/InsForge)[linkedin](https://linkedin.com/company/insforge)

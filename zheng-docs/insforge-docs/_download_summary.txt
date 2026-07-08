@@ -1,0 +1,7 @@
+Download complete in 2.1s
+Total URLs: 238
+Successes: 237
+Failures: 1
+
+Failed URLs:
+https://docs.insforge.dev/api-reference/client/get-download-strategy-deprecated-â-use-get-on-the-canonical-path

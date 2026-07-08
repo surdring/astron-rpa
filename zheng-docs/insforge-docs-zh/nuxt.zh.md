@@ -1,0 +1,193 @@
+## 本页内容
+
+* [1. 创建 InsForge 项目](#1-创建-insforge-项目)
+* [2. 连接 InsForge](#2-连接-insforge)
+* [3. 用一个提示构建你的应用](#3-用一个提示构建你的应用)
+* [4. AI 生成的内容](#4-ai-生成的内容)
+* [5. 启动应用](#5-启动应用)
+* [下一步：用更多提示扩展你的应用](#下一步用更多提示扩展你的应用)
+
+框架指南
+
+# Nuxt
+
+复制页面
+
+了解如何创建 InsForge 项目并使用 AI 构建 Nuxt 应用
+
+复制页面
+
+了解如何创建 InsForge 项目并使用 Cursor 等 AI 工具构建 Nuxt 应用。
+
+## [​](#1-创建-insforge-项目) 1. 创建 InsForge 项目
+
+在 [insforge.dev](https://insforge.dev) 创建一个新的 InsForge 项目。
+
+## [​](#2-连接-insforge) 2. 连接 InsForge
+
+两个部分：
+
+* **CLI 链接** — 参见[快速开始](/quickstart)，运行 `npx @insforge/cli link --project-id <your-project-id>`，以便 AI 代理可以读取你的项目 ID 和密钥。
+* **MCP 设置** — 参见 [MCP 设置](/mcp-setup)，了解每个编辑器的配置（Cursor、Claude Code、Windsurf、Codex、VS Code）。
+
+两者都配置好后，AI 代理可以从你的编辑器读取 schema、运行查询和部署代码。
+
+## [​](#3-用一个提示构建你的应用) 3. 用一个提示构建你的应用
+
+在 Cursor 或你的 AI 助手中，使用以下提示：
+
+```
+创建一个新的 Nuxt 应用，使用 TypeScript。
+添加 Tailwind CSS 3.4 用于样式。
+安装 InsForge SDK 并设置客户端配置。
+
+在我的 InsForge 数据库中，创建一个包含 id 和 name 列的 sports 表。
+添加示例数据：basketball、soccer 和 tennis。设置为公开可读。
+
+创建一个页面，从数据库获取并显示所有运动项目。
+```
+
+你的 AI 将生成完整的应用程序，包括数据库设置和 UI。无需手动编写代码——AI 会为你创建一切。
+
+## [​](#4-ai-生成的内容) 4. AI 生成的内容
+
+你的 AI 助手会自动创建类似这样的文件。你无需手动操作。
+**运行时配置**位于 `nuxt.config.ts`：
+
+nuxt.config.ts
+
+```
+export default defineNuxtConfig({
+  runtimeConfig: {
+    public: {
+      insforgeBaseUrl: process.env.NUXT_PUBLIC_INSFORGE_BASE_URL,
+      insforgeAnonKey: process.env.NUXT_PUBLIC_INSFORGE_ANON_KEY
+    }
+  }
+})
+```
+
+**服务器 API 路由**位于 `server/api/sports.get.ts`：
+
+server/api/sports.get.ts
+
+```
+import { createClient } from '@insforge/sdk';
+
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
+
+  const client = createClient({
+    baseUrl: config.public.insforgeBaseUrl,
+    anonKey: config.public.insforgeAnonKey
+  })
+
+  const { data, error } = await client.database
+    .from('sports')
+    .select('*')
+
+  if (error) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: error.message || 'Failed to fetch sports'
+    })
+  }
+
+  return data
+})
+```
+
+**运动项目页面**位于 `pages/sports.vue`：
+
+pages/sports.vue
+
+```
+<script setup lang="ts">
+interface Sport {
+  id: string;
+  name: string;
+}
+
+const { data: sports, pending, error } = await useFetch<Sport[]>('/api/sports')
+</script>
+
+<template>
+  <div class="min-h-screen p-8">
+    <!-- 加载状态 -->
+    <div v-if="pending" class="flex items-center justify-center min-h-screen">
+      <p class="text-gray-600">Loading...</p>
+    </div>
+
+    <!-- 错误状态 -->
+    <div v-else-if="error" class="flex items-center justify-center min-h-screen">
+      <div class="text-red-600">
+        <h1 class="text-2xl font-bold mb-2">Error</h1>
+        <p>{{ error.message }}</p>
+      </div>
+    </div>
+
+    <!-- 成功状态 -->
+    <div v-else class="max-w-4xl mx-auto">
+      <h1 class="text-4xl font-bold mb-8">Sports</h1>
+
+      <div v-if="sports && sports.length > 0" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div
+          v-for="sport in sports"
+          :key="sport.id"
+          class="p-6 bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow"
+        >
+          <h2 class="text-xl font-semibold text-gray-800 capitalize">
+            {{ sport.name }}
+          </h2>
+          <p class="text-sm text-gray-500 mt-2">ID: {{ sport.id }}</p>
+        </div>
+      </div>
+
+      <p v-else class="text-gray-600">No sports found.</p>
+    </div>
+  </div>
+</template>
+```
+
+## [​](#5-启动应用) 5. 启动应用
+
+运行开发服务器，在浏览器中打开 <http://localhost:3000/sports>，你应该能看到运动项目列表。
+
+```
+npm run dev
+```
+
+## [​](#下一步用更多提示扩展你的应用) 下一步：用更多提示扩展你的应用
+
+尝试以下提示，为你的应用添加更多功能：
+
+```
+添加一个表单来创建新的运动项目并保存到数据库。
+包含验证和错误处理。
+```
+
+```
+添加用户认证，包括注册和登录页面。
+仅允许已认证用户添加新的运动项目。
+```
+
+```
+添加收藏功能，让用户可以标记他们喜欢的运动项目。
+在 user_favorites 表中存储收藏，包含 user_id 和 sport_id。
+```
+
+```
+使用 InsForge Storage 为每个运动项目添加图片。
+允许用户上传运动项目图片并在网格中显示。
+```
+
+```
+添加一个 AI 聊天功能，可以回答关于运动的问题。
+使用 InsForge AI 的流式响应。
+```
+
+[Vue](/examples/framework-guides/vue)[Svelte](/examples/framework-guides/svelte)
+
+⌘I
+
+[x](https://x.com/InsForge_dev)[github](https://github.com/InsForge/InsForge)[linkedin](https://linkedin.com/company/insforge)
