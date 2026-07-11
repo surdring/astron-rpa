@@ -8,7 +8,7 @@
 export function withTimeout<T>(
   promise: Promise<T>,
   timeout: number,
-  timeoutMessage: string = 'Operation timed out'
+  timeoutMessage: string = 'Operation timed out',
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     // 设置超时定时器
@@ -31,7 +31,7 @@ export function withTimeout<T>(
 export function createTimeoutWrapper<T extends (...args: any[]) => Promise<any>>(
   asyncFn: T,
   timeout: number,
-  timeoutMessage: string = 'Operation timed out'
+  timeoutMessage: string = 'Operation timed out',
 ): (...args: Parameters<T>) => Promise<ReturnType<T>> {
   return (...args: Parameters<T>): Promise<ReturnType<T>> => {
     return withTimeout(asyncFn(...args), timeout, timeoutMessage)
@@ -54,14 +54,14 @@ export interface RetryOptions {
  */
 export function withTimeoutAndRetry<T>(
   promiseFn: () => Promise<T>,
-  options: RetryOptions = {}
+  options: RetryOptions = {},
 ): Promise<T> {
   const {
     timeout = 5000,
     maxRetries = 3,
     retryDelay = 1000,
     timeoutMessage = 'Operation timed out',
-    shouldRetry = (error: Error) => !error.message.includes('timeout')
+    shouldRetry = (error: Error) => !error.message.includes('timeout'),
   } = options
 
   return new Promise<T>((resolve, reject) => {
@@ -81,7 +81,8 @@ export function withTimeoutAndRetry<T>(
 
           if (retries < maxRetries && shouldRetry(error)) {
             setTimeout(attempt, retryDelay)
-          } else {
+          }
+          else {
             reject(error)
           }
         })

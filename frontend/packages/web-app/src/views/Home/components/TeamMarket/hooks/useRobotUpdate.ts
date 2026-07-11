@@ -1,7 +1,7 @@
+import { rpaApi } from '@rpa/shared'
 import type { Ref } from 'vue'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { useMarketStore } from '@/stores/useMarketStore'
 
 export function useRobotUpdate(type: string, tableRef: Ref) {

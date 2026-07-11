@@ -2,18 +2,17 @@ import { Buffer } from 'node:buffer'
 import fs from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { BrowserWindow } from 'electron'
-import { clipboard, dialog, globalShortcut, ipcMain, screen, shell } from 'electron'
-import throttle from 'lodash/throttle'
-import { IPluginConfig } from '@rpa/shared'
+import type { IPluginConfig } from '@rpa/shared'
 import { to } from 'await-to-js'
+import { BrowserWindow, clipboard, dialog, globalShortcut, ipcMain, screen, shell } from 'electron'
+import throttle from 'lodash/throttle'
 
-import logger from './log'
-import { openPath } from './path'
-import { getMainWindow, getWindowFromLabel } from './window'
-import { checkForUpdates, quitAndInstallUpdates } from './updater'
 import { config } from './config'
 import { loadExtensions } from './extension'
+import logger from './log'
+import { openPath } from './path'
+import { checkForUpdates, quitAndInstallUpdates } from './updater'
+import { getMainWindow, getWindowFromLabel } from './window'
 
 type MainToRender = (channel: string, msg: string, _win?: BrowserWindow, encode?: boolean) => void
 

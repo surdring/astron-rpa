@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { useTranslation } from 'i18next-vue'
 import { cloneDeep, isEmpty, isEqual } from 'lodash-es'
@@ -6,8 +7,6 @@ import { computed, ref, toRaw, watch } from 'vue'
 import type { VxeGridProps } from 'vxe-table'
 
 import VxeGrid from '@/plugins/VxeTable'
-
-import { rpaApi } from '@rpa/shared'
 
 import AtomConfig from './AtomConfig.vue'
 

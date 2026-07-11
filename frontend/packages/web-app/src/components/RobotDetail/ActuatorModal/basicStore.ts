@@ -1,7 +1,6 @@
+import { rpaApi } from '@rpa/shared'
 import { createInjectionState } from '@vueuse/core'
 import { onBeforeMount, ref, shallowRef } from 'vue'
-
-import { rpaApi } from '@rpa/shared'
 
 interface BasicContentData {
   createTime: string

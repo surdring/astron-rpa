@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { HintIcon, useTheme } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useTranslation } from 'i18next-vue'
 import { h, reactive } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { NormalTable } from '@/components/NormalTable'
 import type { TableOption } from '@/components/NormalTable'
 

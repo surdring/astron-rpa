@@ -1,16 +1,17 @@
-import { app, ipcMain, protocol, session } from 'electron'
 import path from 'node:path'
+
+import { app, ipcMain, protocol, session } from 'electron'
 
 import type { W2WType } from '../types'
 
-import logger from './log'
 import { envJson } from './env'
 import { listenRender } from './event'
+import { getExtensionResourcePath } from './extension'
+import logger from './log'
+import { extensionHost, rendererPath, windowBaseUrl } from './path'
 import { checkPythonRpaProcess, closeSubProcess, startBackend } from './server'
 import { changeTray, createTray } from './tray'
-import { createSubWindow, createMainWindow as createWindow, electronInfo, getWindowFromLabel, getMainWindow, WindowStack } from './window'
-import { rendererPath, windowBaseUrl, extensionHost } from './path'
-import { getExtensionResourcePath } from './extension'
+import { createSubWindow, createMainWindow as createWindow, electronInfo, getMainWindow, getWindowFromLabel, WindowStack } from './window'
 
 const startTime = Date.now()
 globalThis.MainWindowLoaded = false
@@ -37,7 +38,7 @@ protocol.registerSchemesAsPrivileged([
 
 function createMainWindow() {
   const mainWindow = createWindow()
-  const url = windowBaseUrl + 'boot.html'
+  const url = `${windowBaseUrl}boot.html`
   logger.info(`app load url: ${url}`)
 
   mainWindow.loadURL(url).then(() => electronInfo(mainWindow)).catch(() => {
@@ -104,7 +105,8 @@ function registerRpaProtocol() {
         const resourcePath = getExtensionResourcePath(extensionName)
         const filePath = path.join(resourcePath, ...paths.slice(2))
         callback({ path: filePath })
-      } else {
+      }
+      else {
         const filePath = path.join(rendererPath, u.pathname)
         callback({ path: filePath })
       }
@@ -144,10 +146,11 @@ else {
     // 聚焦到已有窗口
     const mainWindow = getMainWindow()
     if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
+      if (mainWindow.isMinimized())
+        mainWindow.restore()
       mainWindow.focus()
     }
-  });
+  })
   // 在Electron完成初始化时被触发
   app.whenReady().then(ready).catch((err) => {
     logger.error('app ready error', err.toString())
@@ -160,7 +163,8 @@ app.on('window-all-closed', () => {
 
 let isQuitting = false
 app.on('before-quit', async (e) => {
-  if (isQuitting) return
+  if (isQuitting)
+    return
   e.preventDefault()
   isQuitting = true
   await closeSubProcess()

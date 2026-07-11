@@ -1,15 +1,18 @@
 import { message } from 'ant-design-vue'
-import { ref, watch } from 'vue'
 import { useTranslation } from 'i18next-vue'
+import { ref, watch } from 'vue'
 
 import { setBaseUrl } from '../../../api/http'
 import {
+  getCurrentAuthUser,
   isHistory,
   login,
   loginStatus,
+  loginWithEmail,
   modifyPassword,
   preAuthenticate,
   register,
+  registerWithEmail,
   setPassword,
   submitConsult,
   tenantList,
@@ -39,7 +42,7 @@ export interface UseAuthFlowOptions {
   autoLogin?: boolean
 }
 
-export function useAuthFlow(opts: UseAuthFlowOptions = {}, emits: { (e: 'finish'): void }) {
+export function useAuthFlow(opts: UseAuthFlowOptions = {}, emits: { (e: 'finish', user?: any): void }) {
   const { t } = useTranslation()
   const platform = ref<Platform>(opts.platform || 'admin')
   const preFormMode = ref<AuthFormMode>('login')
@@ -81,6 +84,11 @@ export function useAuthFlow(opts: UseAuthFlowOptions = {}, emits: { (e: 'finish'
 
   const checkLoginStatus = async () => {
     try {
+      if (opts.authType === 'insforge') {
+        const user = await getCurrentAuthUser()
+        emits('finish', user)
+        return
+      }
       const isLogin = await loginStatus()
       if (isLogin) {
         checkTenant(getSelectedTenant())
@@ -134,6 +142,16 @@ export function useAuthFlow(opts: UseAuthFlowOptions = {}, emits: { (e: 'finish'
 
   const preLogin = async (data: LoginFormData, mode: LoginMode, autoLogin = true) => run(mode, async () => {
     try {
+      // InsForge 认证直接走 SDK 邮箱密码登录，无需旧网关预认证/租户选择
+      if (opts.authType === 'insforge') {
+        const account = data.email || ''
+        const password = data.password || ''
+        const { user } = await loginWithEmail({ email: account, password })
+        data.remember && account && password ? saveRememberUser(account, password, opts.edition, opts.authType) : clearRememberUser()
+        emits('finish', user)
+        return
+      }
+
       const params = { ...data, loginType: mode }
       if (opts.edition === 'saas' && opts.authType === 'uap') {
         const history = await isHistory({ phone: params.phone })
@@ -173,6 +191,21 @@ export function useAuthFlow(opts: UseAuthFlowOptions = {}, emits: { (e: 'finish'
   const handleRegister = async (data: RegisterFormData | ConsultFormData, mode: RegisterMode) => run(mode, async () => {
     try {
       if (mode === 'REGISTER') {
+        // InsForge 邮箱注册直接完成，不再进入设置密码/租户选择流程
+        if (opts.authType === 'insforge') {
+          const regData = data as RegisterFormData
+          const email = regData.email || regData.loginName
+          const name = regData.loginName || email.split('@')[0]
+          const { user } = await registerWithEmail({
+            email,
+            password: regData.password || '',
+            name,
+          })
+          message.success(t('components.auth.registerSuccess'))
+          emits('finish', user)
+          return
+        }
+
         const token = await register(data as RegisterFormData)
         message.success(t('components.auth.registerSuccess'))
         tempToken.value = token
@@ -232,7 +265,7 @@ export function useAuthFlow(opts: UseAuthFlowOptions = {}, emits: { (e: 'finish'
   const autoPreLogin = () => {
     const remembered = getRememberUser()
     if (remembered) {
-      const accountKey = opts.authType === 'uap' ? 'phone' : 'loginName'
+      const accountKey = opts.authType === 'uap' ? 'phone' : opts.authType === 'insforge' ? 'email' : 'loginName'
       const params = {
         [accountKey]: remembered.account,
         password: remembered.password,

@@ -8,10 +8,58 @@ from astronverse.ai import DifyFileTypes
 from astronverse.ai.api.dify import Dify
 from astronverse.ai.api.xcagent import xcAgent
 from astronverse.baseline.logger.logger import logger
+from engine.shared.insforge_client import insforge
 
 AUTH_URL = "http://127.0.0.1:{}/api/rpa-openapi/api-keys/get-astron-by-id".format(
-    atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
+    atomicMg.cfg().get("GATEWAY_PORT") or "13159"
 )
+
+
+def _legacy_auth_url() -> str:
+    return "http://127.0.0.1:{}/api/rpa-openapi/api-keys/get-astron-by-id".format(
+        atomicMg.cfg().get("GATEWAY_PORT") or "13159"
+    )
+
+
+def _get_astron_agent_auth(auth_id):
+    """优先从 InsForge Database 查询 astron_agent_auth 表，失败则回退旧网关。"""
+    logger.info("astron_agent auth lookup start: id=%s", auth_id)
+
+    try:
+        resp = insforge.query_table(
+            "astron_agent_auth",
+            select="api_key,api_secret",
+            filters={"id": str(auth_id)},
+            single=True,
+        )
+        logger.info("astron_agent auth db query: status=%s", resp.status_code)
+        if resp.status_code == 200:
+            data = resp.json()
+            logger.info(
+                "astron_agent auth db query success: id=%s has_key=%s has_secret=%s",
+                auth_id,
+                bool(data.get("api_key")),
+                bool(data.get("api_secret")),
+            )
+            return data
+    except Exception as e:
+        logger.info("astron_agent auth db query failed: %s", e)
+
+    logger.info("astron_agent auth fallback to legacy gateway: %s", _legacy_auth_url())
+    try:
+        response = requests.get(_legacy_auth_url(), params={"id": auth_id})
+        response.raise_for_status()
+        response_data = response.json().get("data")
+        logger.info(
+            "astron_agent auth fallback success: id=%s has_key=%s has_secret=%s",
+            auth_id,
+            bool(response_data.get("api_key")),
+            bool(response_data.get("api_secret")),
+        )
+        return response_data
+    except Exception as e:
+        logger.info("astron_agent auth fallback failed: %s", e)
+        raise
 
 
 class Agent:
@@ -239,10 +287,15 @@ class Agent:
         workflow_id = astron_workflow.get("agentId")
         inputs = astron_workflow.get("inputs")
 
-        response = requests.get(AUTH_URL, params={"id": auth_id})
-        response_data = response.json().get("data")
-        logger.info(response_data)
+        response_data = _get_astron_agent_auth(auth_id)
+        logger.info(
+            "call_astron_agent auth result: id=%s has_key=%s has_secret=%s",
+            auth_id,
+            bool(response_data.get("api_key")),
+            bool(response_data.get("api_secret")),
+        )
 
         xc_agent = xcAgent(response_data.get("api_key"), response_data.get("api_secret"))
         xc_agent_result = xc_agent.run_astron_flow(workflow_id, False, inputs)
+        logger.info("call_astron_agent workflow result: workflow_id=%s", workflow_id)
         return xc_agent_result

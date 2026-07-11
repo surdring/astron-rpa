@@ -1,16 +1,17 @@
 import { exec, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { join } from 'node:path'
+
 import { to } from 'await-to-js'
 
 import { toUnicode } from '../common'
 
+import { envJson } from './env'
 import { mainToRender } from './event'
 import { extract7z } from './file'
 import logger from './log'
 import { appWorkPath, confPath, pythonExe, resourcePath } from './path'
 import { getMainWindow } from './window'
-import { envJson } from './env'
 
 process.on('uncaughtException', (err) => {
   logger.error(`uncaughtException: ${err.message}`)
@@ -66,10 +67,10 @@ export async function startServer() {
   const rpaSetup = spawn(
     pythonExe,
     ['-m', envJson.SCHEDULER_NAME, `--conf=${confPath}`],
-    { cwd: appWorkPath }
+    { cwd: appWorkPath },
   )
 
-  rpaSetup.stdout?.on('data', (data) => msgFilter(data.toString()))
+  rpaSetup.stdout?.on('data', data => msgFilter(data.toString()))
 
   rpaSetup.stderr?.on('data', (data) => {
     logger.info(`${envJson.SCHEDULER_NAME} stderr: ${data.toString()}`)
@@ -100,11 +101,12 @@ export function closeSubProcess() {
       (error) => {
         if (error) {
           logger.error(`${envJson.SCHEDULER_NAME} closeSubProcess error: ${error}`)
-        } else {
+        }
+        else {
           logger.info(`${envJson.SCHEDULER_NAME} closeSubProcess success`)
         }
         resolve()
-      }
+      },
     )
   })
 }
@@ -147,7 +149,8 @@ async function readHashFile(hashFilePath: string): Promise<string> {
   try {
     const hashContent = await fs.readFile(hashFilePath, 'utf-8')
     return hashContent.trim()
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(`读取hash文件失败: ${hashFilePath}`, error)
     throw error
   }
@@ -157,7 +160,7 @@ async function readHashFile(hashFilePath: string): Promise<string> {
  * 检查单个文件是否需要重新解压
  * @param packageFile - 压缩包文件名
  * @returns 是否需要重新解压
- * */
+ */
 async function checkSingleFile(packageFile: string): Promise<boolean> {
   const archiveName = packageFile.replace('.7z', '')
   const archivePath = join(appWorkPath, archiveName)
@@ -174,7 +177,7 @@ async function checkSingleFile(packageFile: string): Promise<boolean> {
     // 2. 并行检查解压文件和用户数据目录中的hash文件是否存在
     const [archiveExists, hashFileExists] = await Promise.all([
       fs.access(archivePath).then(() => true).catch(() => false),
-      fs.access(appWorkHashPath).then(() => true).catch(() => false)
+      fs.access(appWorkHashPath).then(() => true).catch(() => false),
     ])
 
     // 3. 如果解压文件不存在，需要重新解压
@@ -192,7 +195,7 @@ async function checkSingleFile(packageFile: string): Promise<boolean> {
     // 5. 并行读取两个hash文件的内容
     const [resourceHash, appWorkHash] = await Promise.all([
       readHashFile(resourceHashPath),
-      readHashFile(appWorkHashPath)
+      readHashFile(appWorkHashPath),
     ])
 
     // 6. 如果任何一个hash文件内容为空，需要重新解压
@@ -205,12 +208,14 @@ async function checkSingleFile(packageFile: string): Promise<boolean> {
     if (resourceHash !== appWorkHash) {
       logger.warn(`hash不匹配: ${packageFile}`)
       return true
-    } else {
+    }
+    else {
       logger.info(`hash验证通过: ${packageFile}`)
     }
 
     return false
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(`检查解压文件失败: ${packageFile}`, error)
     return true
   }
@@ -250,7 +255,8 @@ async function copySingleFile(fileName: string): Promise<boolean> {
     logger.info(`复制文件: ${fileName}`)
     await fs.copyFile(sourcePath, targetPath)
     return true
-  } catch (error) {
+  }
+  catch (error) {
     logger.error(`复制文件失败: ${fileName}`, error)
     throw error
   }
@@ -262,7 +268,8 @@ async function copySingleFile(fileName: string): Promise<boolean> {
 async function ensureAppWorkPathExists(): Promise<void> {
   try {
     await fs.access(appWorkPath)
-  } catch {
+  }
+  catch {
     logger.info(`创建用户数据目录: ${appWorkPath}`)
     await fs.mkdir(appWorkPath, { recursive: true })
   }
@@ -310,13 +317,13 @@ export async function startBackend() {
 
   logger.info(`需要解压的文件: ${needExtractFiles.join(', ')}`)
 
-  let preStep = 30;
-  const singlePercentStep = (90 - preStep) / needExtractFiles.length;
+  const preStep = 30
+  const singlePercentStep = (90 - preStep) / needExtractFiles.length
   sendToRender('正在解压Python包', preStep)
 
   // 解压所有文件
   await Promise.allSettled(needExtractFiles.map(file => extractAndCleanFile(file, (percent) => {
-    const newStep = preStep + (percent / 100 * singlePercentStep);
+    const newStep = preStep + (percent / 100 * singlePercentStep)
     sendToRender('解压中...', newStep)
   })))
 
@@ -335,13 +342,13 @@ async function extractAndCleanFile(fileName: string, percentCallback: (percent: 
   // 1. 确保临时目录/目标目录不存在
   const [error] = await to(Promise.all([
     fs.rm(tempOutputDir, { recursive: true, force: true }),
-    fs.rm(outputDir, { recursive: true, force: true })
+    fs.rm(outputDir, { recursive: true, force: true }),
   ]))
   if (error) {
     logger.error(`文件被占用: ${error}`)
     return
   }
-  logger.info("删除已解压目录")
+  logger.info('删除已解压目录')
 
   // 2. 解压到临时目录
   logger.info(`开始解压到临时目录: ${tempOutputDir}`)

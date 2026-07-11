@@ -107,6 +107,58 @@ export function accountLoginFormConfig(isInvite = false, edition = 'saas', authT
       break
     case 'enterprise_casdoor': // casdoor无企业版
       break
+    case 'saas_insforge': // InsForge 邮箱密码登录
+      conf = {
+        fields: [
+          { ...fieldFactories.email(), key: 'email' },
+          fieldFactories.password(true),
+          fieldFactories.agreement(),
+          { ...fieldFactories.remember(), hidden: () => isInvite },
+        ],
+        actionsRender: ({ handleEvents, loading }: { handleEvents?: (event: string) => void, loading?: boolean }) => (
+          <div class="w-full absolute bottom-0">
+            <Button type="primary" size="large" block onClick={() => handleEvents && handleEvents('submit')} loading={loading}>
+              { loading ? i18next.t('authForm.loggingIn') : (isInvite ? i18next.t('authForm.loginAndJoin') : i18next.t('authForm.login')) }
+            </Button>
+            <div class="text-center text-[14px] mt-[12px] text-[#000000D9] dark:text-[#FFFFFFD9]">
+              {i18next.t('authForm.noAccount')}
+              <Button type="link" class="!m-0 !p-0 !border-0 h-auto" onClick={() => handleEvents && handleEvents('switchToRegister')}>
+                {i18next.t('authForm.register')}
+              </Button>
+            </div>
+          </div>
+        ),
+      }
+      break
+    case 'enterprise_insforge': // InsForge 企业版仅保留登录
+      conf = {
+        fields: [
+          { ...fieldFactories.email(), key: 'email' },
+          fieldFactories.password(true),
+          fieldFactories.agreement(),
+          {
+            ...fieldFactories.remember(),
+            customRender: (ctx?: { formData?: any, handleEvents?: any }) => {
+              const { formData = {} } = ctx ?? {}
+              return (
+                <div class="w-full flex justify-between items-center">
+                  <Checkbox v-model:checked={formData.remember} class="text-[#000000D9] dark:text-[#FFFFFFD9]">
+                    {i18next.t('authForm.rememberPassword')}
+                  </Checkbox>
+                </div>
+              )
+            },
+          },
+        ],
+        actionsRender: ({ handleEvents, loading }: { handleEvents?: (event: string) => void, loading?: boolean }) => (
+          <div class="w-full absolute bottom-0">
+            <Button type="primary" size="large" block onClick={() => handleEvents && handleEvents('submit')} loading={loading}>
+              { loading ? i18next.t('authForm.loggingIn') : (isInvite ? i18next.t('authForm.loginAndJoin') : i18next.t('authForm.login')) }
+            </Button>
+          </div>
+        ),
+      }
+      break
     default:
       break
   }
@@ -208,6 +260,32 @@ export function personalRegisterFormConfig(formData: any, isInvite = false, edit
       }
       break
     case 'enterprise_casdoor': // casdoor无企业版 企业版无注册功能
+      break
+    case 'saas_insforge': // InsForge 邮箱注册
+      conf = {
+        layout: 'vertical',
+        fields: [
+          { ...fieldFactories.email(), key: 'email' },
+          fieldFactories.password(),
+          fieldFactories.confirmPassword(formData),
+          fieldFactories.agreement(),
+        ],
+        actionsRender: ({ handleEvents, loading }: { handleEvents?: (event: string) => void, loading?: boolean }) => (
+          <div class="w-full absolute bottom-0">
+            <Button type="primary" size="large" block onClick={() => handleEvents && handleEvents('submit')} loading={loading}>
+              { loading ? i18next.t('authForm.registering') : (isInvite ? i18next.t('authForm.registerAndJoin') : i18next.t('authForm.register')) }
+            </Button>
+            <div class="text-center text-[14px] mt-[12px] text-[#000000D9] dark:text-[#FFFFFFD9]">
+              {i18next.t('authForm.hasAccount')}
+              <Button type="link" class="!m-0 !p-0 !border-0 h-auto" onClick={() => handleEvents && handleEvents('switchToLogin')}>
+                {i18next.t('authForm.loginNow')}
+              </Button>
+            </div>
+          </div>
+        ),
+      }
+      break
+    case 'enterprise_insforge': // 企业版无注册功能
       break
     default:
       break

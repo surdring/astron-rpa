@@ -10,6 +10,7 @@ from wsgiref.handlers import format_date_time
 
 import requests
 from astronverse.actionlib.atomic import atomicMg
+from astronverse.baseline.logger.logger import logger
 from astronverse.openapi.error import *
 
 # 配置文件中设置信息读取
@@ -17,6 +18,11 @@ cfg = atomicMg.cfg_from_file(key="OpenApi")
 APPId = cfg.get("APP_ID", "")
 APISecret = cfg.get("API_SECRET", "")
 APIKey = cfg.get("API_KEY", "")
+
+
+def _ai_service_url() -> str:
+    """获取 ai-service 基础 URL（从环境变量读取，默认指向远程服务）。"""
+    return os.getenv("AI_SERVICE_URL", "http://172.16.100.211:8001")
 
 
 class OcrRequests:
@@ -148,6 +154,7 @@ class OpenapiIflytek:
     @staticmethod
     def common_ocr(header_dict: dict, files: list) -> list:
         results = []
+        base_url = _ai_service_url()
         for image in files:
             with open(image, "rb") as f:
                 image_bytes = f.read()
@@ -155,12 +162,12 @@ class OpenapiIflytek:
             suffix = os.path.splitext(image)[1].lstrip(".").lower()
             # 请求数据准备
             body = {"encoding": suffix, "image": str(image_info, "UTF-8"), "status": 3}
-            url = "http://127.0.0.1:{}/api/rpa-ai-service/ocr/general".format(
-                atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-            )
+            url = f"{base_url}/ocr/general"
             headers = {"content-type": "application/json"}
             # 发起请求
+            logger.info("ocr general request: url=%s image=%s", url, image)
             ret = requests.request("POST", url, data=json.dumps(body), headers=headers)
+            logger.info("ocr general response: url=%s status=%s", url, ret.status_code)
 
             # 请求结果处理
             if ret.status_code != 200:

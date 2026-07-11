@@ -1,8 +1,8 @@
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 
-import { rpaApi } from '@rpa/shared'
 import { RobotConfigTaskModal } from '@/components/RobotConfigTaskModal'
 import { ActuatorRobotDetailModal } from '@/components/RobotDetail'
 import { McpConfigModal } from '@/views/Home/components/modals/index'

@@ -1,9 +1,9 @@
+import { rpaApi } from '@rpa/shared'
 import { to } from 'await-to-js'
 import { ref } from 'vue'
 
 import i18next from '@/plugins/i18next'
 
-import { rpaApi } from '@rpa/shared'
 import { utilsManager } from '@/platform'
 import type { AppFileItem } from '@/views/Home/types/market'
 import { AppFileStatus } from '@/views/Home/types/market'

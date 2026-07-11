@@ -109,7 +109,7 @@ defineExpose({
     />
 
     <TenantSelect
-      v-else-if="currentFormMode === 'tenantSelect'"
+      v-else-if="currentFormMode === 'tenantSelect' && authType !== 'insforge'"
       :key="`${edition}_${authType}_tenantSelect`"
       :invite-info="inviteInfo"
       :edition="edition"

@@ -1,9 +1,9 @@
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { inject, nextTick, ref, watch } from 'vue'
 import type { Ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { useMarketStore } from '@/stores/useMarketStore'
 import type { AnyObj } from '@/types/common'
 import { MARKET_TYPE_PUBLIC, MARKET_USER_OWNER } from '@/views/Home/components/TeamMarket/config/market'

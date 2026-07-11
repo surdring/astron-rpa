@@ -25,7 +25,7 @@ const isMarket = computed(() => {
   <div class="flex">
     <MarketSiderMenu v-if="isMarket" />
     <SiderMenu v-else />
-    <div class="absolute bottom-[20px] left-0" :style="{ width: `${COMMON_SIDER_WIDTH}px` }">
+    <div v-if="appInfo.appAuthType !== 'insforge'" class="absolute bottom-[20px] left-0" :style="{ width: `${COMMON_SIDER_WIDTH}px` }">
       <Auth.TenantDropdown :auth-type="appInfo.appAuthType" :before-switch="userStore.beforeSwitch" @switch-tenant="userStore.switchTenant" />
     </div>
     <div class="flex-1 relative">

@@ -1,6 +1,7 @@
 import { message } from 'ant-design-vue'
 import i18next from 'i18next'
 
+import { getCurrentUser, signInWithPassword, signOut, signUp } from '../../../insforge/auth'
 import type { ConsultFormData, LoginFormData, RegisterFormData, TenantItem } from '../interface'
 
 import { http } from './http'
@@ -120,4 +121,39 @@ export async function submitConsult(params: ConsultFormData) {
 export async function submitRenewal(params: ConsultFormData) {
   const { data } = await http.post('/robot/feedback/renewal/submit', params)
   return data
+}
+
+// ===== 以下为 InsForge 认证 API（authType === 'insforge' 时使用） =====
+
+export interface LoginWithEmailParams {
+  email: string
+  password: string
+}
+
+export interface RegisterWithEmailParams {
+  email: string
+  password: string
+  name?: string
+}
+
+/** 邮箱密码登录（InsForge） */
+export async function loginWithEmail(params: LoginWithEmailParams) {
+  const { accessToken, user } = await signInWithPassword(params)
+  return { accessToken, user }
+}
+
+/** 邮箱注册（InsForge） */
+export async function registerWithEmail(params: RegisterWithEmailParams) {
+  const { accessToken, user } = await signUp(params)
+  return { accessToken, user }
+}
+
+/** 退出登录（InsForge） */
+export async function logoutInsforge() {
+  await signOut()
+}
+
+/** 获取当前登录用户（InsForge） */
+export async function getCurrentAuthUser() {
+  return getCurrentUser()
 }

@@ -6,12 +6,12 @@ import {
   QuestionCircleOutlined,
 } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import type { Rule } from 'ant-design-vue/es/form'
 import { useTranslation } from 'i18next-vue'
 import { nanoid } from 'nanoid'
 import { reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { EMAIL_OPTIONS, PROTOCAL_OPTIONS } from '@/constants/mail'
 
 const props = defineProps<{ data: object }>()

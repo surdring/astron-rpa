@@ -1,8 +1,8 @@
+import { rpaApi } from '@rpa/shared'
 import { difference, has, isArray, isEmpty, some } from 'lodash-es'
 
 import { getConfigParams } from '@/api/atom'
 import { getProcessAndCodeList } from '@/api/resource'
-import { rpaApi } from '@rpa/shared'
 import { OTHER_IN_TYPE } from '@/constants/atom'
 import type { ProcessNode } from '@/corobot/type'
 import { useFlowStore } from '@/stores/useFlowStore'

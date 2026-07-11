@@ -1,4 +1,5 @@
 import { Icon, NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { Button, message, Tooltip } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { storeToRefs } from 'pinia'
@@ -7,7 +8,6 @@ import { h, ref } from 'vue'
 
 import $loading from '@/utils/globalLoading'
 
-import { rpaApi } from '@rpa/shared'
 import { PublishModal } from '@/components/PublishComponents'
 import { fromIcon } from '@/components/PublishComponents/utils'
 import { DesignerRobotDetailModal } from '@/components/RobotDetail'

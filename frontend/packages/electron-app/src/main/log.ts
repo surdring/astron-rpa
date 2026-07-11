@@ -1,5 +1,6 @@
-import log from 'electron-log'
 import { join } from 'node:path'
+
+import log from 'electron-log'
 
 import { appWorkPath } from './path'
 

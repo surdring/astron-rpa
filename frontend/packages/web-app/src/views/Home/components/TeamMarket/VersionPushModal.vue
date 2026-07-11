@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { Empty, message, Spin } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { ref } from 'vue'
-
-import { rpaApi } from '@rpa/shared'
 
 import type { cardAppItem } from '../../types/market'
 

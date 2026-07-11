@@ -1,4 +1,5 @@
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { Empty, Table } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { isEmpty } from 'lodash-es'
@@ -6,7 +7,6 @@ import { defineComponent, ref } from 'vue'
 
 import { getTableScrollY } from '@/utils/common'
 
-import { rpaApi } from '@rpa/shared'
 import { getConfigParams } from '@/api/atom'
 import GlobalModal from '@/components/GlobalModal/index.vue'
 import { useProcessStore } from '@/stores/useProcessStore'

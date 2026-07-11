@@ -1,7 +1,8 @@
+import { rpaApi } from '@rpa/shared'
+
 import { getComponentForm, getComponentId, isComponentKey } from '@/utils/customComponent'
 import { Bus as Emittery } from '@/utils/eventBus'
 
-import { rpaApi } from '@rpa/shared'
 import { getSmartComponentId, isSmartComponentKey } from '@/components/SmartComponent/utils'
 import type { IProjectDocument, ProcessActor, ProcessEvent, ProcessNodeActor, ProcessNodeEvent } from '@/corobot/IProjectDocument'
 import * as service from '@/corobot/store/service'

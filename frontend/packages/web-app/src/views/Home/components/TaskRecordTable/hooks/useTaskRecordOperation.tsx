@@ -1,9 +1,9 @@
+import { rpaApi } from '@rpa/shared'
 import { message, Table } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { useTranslation } from 'i18next-vue'
 import { computed, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { checkVideoPaths } from '@/api/setting'
 import useRecordTableColumns from '@/views/Home/components/RecordTable/hooks/useRecordTableColumns.tsx'
 

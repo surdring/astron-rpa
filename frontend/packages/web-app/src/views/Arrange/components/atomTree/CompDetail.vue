@@ -1,10 +1,10 @@
 <script lang="ts" setup>
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
 import { COMPONENT_KEY_PREFIX, updateFlowNodesComponent } from '@/utils/customComponent'
 
-import { rpaApi } from '@rpa/shared'
 import { createComponentAbility } from '@/views/Arrange/utils/generateData'
 
 const props = defineProps<{ robotId: string, componentId: string }>()

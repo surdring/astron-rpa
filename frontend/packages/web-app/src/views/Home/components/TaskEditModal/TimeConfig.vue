@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { QuestionCircleFilled, QuestionCircleOutlined } from '@ant-design/icons-vue'
+import { rpaApi } from '@rpa/shared'
 import { DatePicker, message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { useTranslation } from 'i18next-vue'
@@ -8,7 +9,6 @@ import { computed, inject, ref } from 'vue'
 
 import { getEverydayExecuteTime, getEveryHoursExecuteTime, getEveryMinutesExecuteTime, getEveryMonthsExecuteTime, getEveryWeeksExecuteTime } from '@/utils/dayjsUtils'
 
-import { rpaApi } from '@rpa/shared'
 import { utilsManager } from '@/platform'
 import type { Schedule } from '@/types/schedule'
 

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import type { FormInstance } from 'ant-design-vue'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { computed, reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { TEAMMARKETS } from '@/constants/menu'
 import { useRoutePush } from '@/hooks/useCommonRoute'
 import { useMarketStore } from '@/stores/useMarketStore'

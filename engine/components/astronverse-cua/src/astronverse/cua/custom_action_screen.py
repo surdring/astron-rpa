@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import tempfile
 import time
 from datetime import datetime
@@ -183,9 +184,14 @@ Analyze context (screenshots and action history), then:
 - **禁止** 在"Thought"中包含坐标信息和下一步的 action。  
 """
 
-API_URL = "http://127.0.0.1:{}/api/rpa-ai-service/cua/chat".format(
-    atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-)
+def _ai_service_url() -> str:
+    """获取 ai-service 基础 URL（从环境变量读取，默认指向远程服务）。"""
+    return os.getenv("AI_SERVICE_URL", "http://172.16.100.211:8001")
+
+
+def _cua_chat_url() -> str:
+    """CUA chat 端点：由本地网关转发改为直连 ai-service。"""
+    return f"{_ai_service_url()}/cua/chat"
 
 
 class CustomActionScreen:
@@ -320,11 +326,14 @@ class CustomActionScreen:
             模型响应文本
         """
 
+        url = _cua_chat_url()
         try:
             # 发送 API
             request_body = {"messages": messages}
-            response = requests.post(API_URL, json=request_body)
+            logger.info("custom action screen cua chat request: url=%s message_count=%s", url, len(messages))
+            response = requests.post(url, json=request_body)
             response.raise_for_status()  # 检查请求是否成功
+            logger.info("custom action screen cua chat response: url=%s status=%s", url, response.status_code)
 
             # 返回模型生成的回复
             response_json = response.json()
@@ -340,10 +349,10 @@ class CustomActionScreen:
                 raise ValueError("未知的响应格式")
 
         except requests.exceptions.RequestException as e:
-            logger.info(f"请求错误: {e}")
+            logger.info("custom action screen cua chat request error: url=%s error=%s", url, e)
             return None
         except KeyError:
-            logger.info("响应格式不正确")
+            logger.info("custom action screen cua chat response format invalid: url=%s", url)
             return None
 
     def execute_action(self, action_response, image_height, image_width) -> tuple:

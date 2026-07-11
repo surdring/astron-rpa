@@ -1,9 +1,9 @@
 import { Icon, NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { App, message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { h } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { ComponentPublishDetail, ComponentPublishModal } from '@/components/ComponentPublish'
 import { ARRANGE } from '@/constants/menu'
 import { useRoutePush } from '@/hooks/useCommonRoute'
@@ -84,7 +84,7 @@ export function useOperate(refreshTable: () => void) {
     newProjectModal.show({
       title: t('components.newCopy'),
       name: t('components.componentName'),
-      defaultName: () => createCopyComponentName({ componentId }),
+      defaultName: () => rpaApi.projects.createCopyComponentName({ componentId }),
       rules: [{ validator: checkName, trigger: 'blur' }],
       onConfirm: (name: string) => newComponent(name),
     })

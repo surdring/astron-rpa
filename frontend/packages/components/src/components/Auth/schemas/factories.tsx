@@ -258,6 +258,7 @@ export const fieldFactories = {
     type: 'input',
     placeholder: i18next.t('userForm.enterEmail'),
     rules: [
+      required(i18next.t('userForm.enterEmail')),
       { type: 'email', message: i18next.t('settingCenter.msgNotify.mailFormatError'), trigger: 'change' },
     ],
   }),

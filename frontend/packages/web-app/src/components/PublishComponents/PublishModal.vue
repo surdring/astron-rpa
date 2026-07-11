@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { Drawer, Spin } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
-
-import { rpaApi } from '@rpa/shared'
 
 import Publish from './Publish.vue'
 import { toFrontData } from './utils'

@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { rpaApi } from '@rpa/shared'
 import { Col, Divider, Form, Input, Row, Textarea } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import { useTranslation } from 'i18next-vue'
 import { computed, ref } from 'vue'
 
 import { uploadVideoFile } from '@/api/resource'
-import { rpaApi } from '@rpa/shared'
 import type { Attachment } from '@/components/AttachmentUpload/index.vue'
 import AttachmentUpload from '@/components/AttachmentUpload/index.vue'
 import RobotAvatarSelect from '@/components/Avatar/RobotAvatarSelect.vue'

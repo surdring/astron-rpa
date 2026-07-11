@@ -1,12 +1,12 @@
 import path from 'node:path'
 
-import { app, BrowserWindow, screen } from 'electron'
 import type { CreateWindowOptions } from '@rpa/shared/platform'
+import { app, BrowserWindow, screen } from 'electron'
 import { isUndefined } from 'lodash'
 
 import { APP_ICON_PATH, MAIN_WINDOW_LABEL } from './config'
-import { resourcePath } from './path'
 import logger from './log'
+import { resourcePath } from './path'
 
 export const WindowStack: Map<string, BrowserWindow> = new Map()
 

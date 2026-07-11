@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { crudApi, rpaApi } from '@rpa/shared'
 import type { FormInstance } from 'ant-design-vue'
 import { Input, message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
@@ -9,7 +10,6 @@ import type { VxeGridProps } from 'vxe-table'
 
 import VxeGrid from '@/plugins/VxeTable'
 
-import { rpaApi, crudApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.vue'
 import type { FormRules } from '@/types/common'
 

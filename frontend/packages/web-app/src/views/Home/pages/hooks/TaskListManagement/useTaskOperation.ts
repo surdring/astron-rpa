@@ -1,4 +1,5 @@
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { throttle } from 'lodash-es'
@@ -6,7 +7,6 @@ import { h, ref } from 'vue'
 
 import $loading from '@/utils/globalLoading'
 
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { windowManager } from '@/platform'
 import { TaskEditModal } from '@/views/Home/components/TaskEditModal'

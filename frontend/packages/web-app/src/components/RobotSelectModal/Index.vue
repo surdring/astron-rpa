@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import { SearchOutlined } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useTranslation } from 'i18next-vue'
 import { debounce } from 'lodash-es'
 import { ref } from 'vue'
-
-import { rpaApi } from '@rpa/shared'
 
 const emit = defineEmits(['ok'])
 

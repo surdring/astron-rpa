@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import i18next from '@/plugins/i18next'
 
-import { rpaApi } from '@rpa/shared'
 import { CreateTeamMarketModal } from '@/components/CreateTeamMarketModal'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { COMMON_SIDER_WIDTH } from '@/constants'

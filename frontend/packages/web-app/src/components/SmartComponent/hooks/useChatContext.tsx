@@ -1,3 +1,4 @@
+import { rpaApi } from '@rpa/shared'
 import { message, Typography } from 'ant-design-vue'
 import type { BubbleProps, XRequestCallbacks } from 'ant-design-x-vue'
 import { useXAgent, useXChat, XRequest } from 'ant-design-x-vue'
@@ -5,7 +6,6 @@ import { useTranslation } from 'i18next-vue'
 import markdownit from 'markdown-it'
 import { computed, inject, provide, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { getAPIBaseURL } from '@/api/http/env'
 
 import { SMART_CODE_BLOCK_REGEX, SMART_CODE_START_REGEX } from '../config/constants'

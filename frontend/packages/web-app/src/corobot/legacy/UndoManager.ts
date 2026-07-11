@@ -7,7 +7,7 @@ export type Operation<T>
 export type Transaction<T> = Operation<T>[]
 export type ApplyOperationCallback<T> = (
   operation: Operation<T>,
-  isUndo: boolean
+  isUndo: boolean,
 ) => void
 
 export class UndoManager<T> {

@@ -1,4 +1,5 @@
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { Button, message } from 'ant-design-vue'
 import dayjs from 'dayjs'
@@ -6,7 +7,6 @@ import { useTranslation } from 'i18next-vue'
 import { debounce } from 'lodash-es'
 import { computed, h } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { PublishModal } from '@/components/PublishComponents'
 
@@ -20,7 +20,7 @@ interface versionMap {
 
 export default function useVersionManage(props) {
   const { t } = useTranslation()
-  const { state: versionLst, isLoading: spinning, executeImmediate } = useAsyncState(() => rpaApi.versions.getVersionLst<versionMap[]>({ robotId: props.robotId }), [])
+  const { state: versionLst, isLoading: spinning, executeImmediate } = useAsyncState(() => rpaApi.versions.getVersionLst({ robotId: props.robotId }) as Promise<versionMap[]>, [])
 
   const hasEditing = computed(() => versionLst.value.some(item => item.versionNum === 0))
 

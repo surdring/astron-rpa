@@ -49,6 +49,9 @@ const headerTitle = computed(() => {
   if (edition === 'saas' && authType === 'casdoor') {
     return { title: t('auth.registerCasdoor'), actionText: '' }
   }
+  if (edition === 'saas' && authType === 'insforge') {
+    return { title: t('auth.register'), actionText: '' }
+  }
   return { title: '', actionText: '' }
 })
 
@@ -56,6 +59,8 @@ const personalLoading = computed(() => running === 'REGISTER')
 const enterpriseLoading = computed(() => running === 'CONSULT')
 
 function changeMode() {
+  if (authType === 'insforge')
+    return
   const next: RegisterMode = currentMode.value === 'REGISTER' ? 'CONSULT' : 'REGISTER'
   next === 'CONSULT' ? personal.resetForm() : consultRef.value?.resetForm()
   currentMode.value = next
@@ -82,7 +87,7 @@ function changeMode() {
     />
 
     <ConsultForm
-      v-if="currentMode === 'CONSULT'"
+      v-if="currentMode === 'CONSULT' && authType !== 'insforge'"
       ref="consultRef"
       :loading="enterpriseLoading"
       @submit="(data) => emit('submit', data, 'CONSULT')"

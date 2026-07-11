@@ -61,7 +61,7 @@ function loginAuto() {
     const code = searchParams.get('code')
     const tenantType = searchParams.get('tenantType')
     autoLogin.value = !code
-    if (code === '900005') {
+    if (code === '900005' && appInfo.value.appAuthType !== 'insforge') {
       expiredModal(tenantType)
       nextTick(() => {
         console.log(loginFormRef)
@@ -79,10 +79,17 @@ function loginSuccess(userInfo: any) {
 
 onMounted(() => {
   loginWindowStep()
+  // 浏览器开发环境没有主进程调度事件，直接显示登录表单
+  if (utilsManager.isBrowser) {
+    sessionStorage.setItem('launch', '1')
+    loginAuto()
+  }
 })
 
 window.onload = async () => {
-  loginAuto()
+  if (!utilsManager.isBrowser) {
+    loginAuto()
+  }
   const [err] = await to(utilsManager.invoke('main_window_onload'))
   if (err) {
     console.error('main_window_onload 调用失败: ', err)

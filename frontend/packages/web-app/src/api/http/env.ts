@@ -8,6 +8,8 @@ import GlobalModal from '@/components/GlobalModal/index.ts'
 const DEFAULT_PORT = 13159
 const DEFAULT_HOST = import.meta.env.VITE_SERVICE_HOST ?? 'localhost'
 const RPA_SERVICES_URL = import.meta.env.VITE_RPA_SERVICES_URL
+const INSFORGE_URL = import.meta.env.VITE_INSFORGE_URL
+const AUTH_TYPE = import.meta.env.VITE_AUTH_TYPE
 
 /**
  * 获取接口基础URL
@@ -16,6 +18,10 @@ const RPA_SERVICES_URL = import.meta.env.VITE_RPA_SERVICES_URL
 export function getBaseURL(): string {
   if (RPA_SERVICES_URL)
     return RPA_SERVICES_URL.replace(/\/$/, '')
+
+  // InsForge 认证模式下直连 InsForge BaaS 后端
+  if (AUTH_TYPE === 'insforge' && INSFORGE_URL)
+    return INSFORGE_URL.replace(/\/$/, '')
 
   const port = Number(storage.get('route_port')) || DEFAULT_PORT
   return `http://${DEFAULT_HOST}:${port}`

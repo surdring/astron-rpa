@@ -11,6 +11,8 @@ dependencies = [
     "uvicorn",
     "fastapi",
     "no-config",
+    "python-socketio[asyncio]",
+    "httpx",
 ]
 
 [tool.uv.sources]

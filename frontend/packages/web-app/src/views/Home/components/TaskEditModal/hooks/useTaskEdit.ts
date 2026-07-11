@@ -1,10 +1,10 @@
+import { rpaApi } from '@rpa/shared'
 import type { FormInstance } from 'ant-design-vue'
 import { message } from 'ant-design-vue'
 import type { Rule } from 'ant-design-vue/es/form'
 import { useTranslation } from 'i18next-vue'
 import { computed, provide, reactive, ref, shallowRef, watch } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { EMAIL_OPTIONS_MAP } from '@/constants/mail'
 import type { Task, TaskTrigger } from '@/types/schedule'
 import { TASK_TYPE } from '@/views/Home/config/task'

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { rpaApi } from '@rpa/shared'
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { rpaApi } from '@rpa/shared'
 import Header from '@/components/Header.vue'
 import HeaderControl from '@/components/HeaderControl/HeaderControl.vue'
 import HeaderMenu from '@/components/HeaderMenu.vue'

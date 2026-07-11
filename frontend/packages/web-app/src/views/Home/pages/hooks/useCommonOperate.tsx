@@ -1,5 +1,6 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { Button } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { h } from 'vue'
@@ -9,7 +10,6 @@ import i18next from '@/plugins/i18next'
 
 import $loading from '@/utils/globalLoading'
 
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { VIEW_ALL, VIEW_OTHER, VIEW_OWN } from '@/constants/resource'
 import { useRunlogStore } from '@/stores/useRunlogStore'

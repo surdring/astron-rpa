@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { Drawer, Spin } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { computed } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import Avatar from '@/components/Avatar/Avatar.vue'
 
 import Group from './Group.vue'
@@ -71,7 +71,7 @@ const infos = computed(() => ([
 
       <Group class="py-4" :title="$t('versionHistory')">
         <template v-for="(item, index) in (state.versionInfoList || [])" :key="item.version">
-          <a-divider v-if="index > 0" class="my-3" />
+          <a-divider v-if="Number(index) > 0" class="my-3" />
           <VersionDetail :data="item" />
         </template>
       </Group>

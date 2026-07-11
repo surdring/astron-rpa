@@ -1,7 +1,7 @@
+import { rpaApi } from '@rpa/shared'
 import { findIndex } from 'lodash-es'
 import { reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import type { TableOption } from '@/components/NormalTable'
 import { fromIcon } from '@/components/PublishComponents/utils'
 import { useCardsTools } from '@/views/Home/components/TeamMarket/hooks/useCardsTools'

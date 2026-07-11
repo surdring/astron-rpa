@@ -1,10 +1,10 @@
 import { Icon, NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { storeToRefs } from 'pinia'
 import { computed, h, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { useAppConfigStore } from '@/stores/useAppConfig'
 import { useUserStore } from '@/stores/useUserStore'
 import { useCommonOperate } from '@/views/Home/pages/hooks/useCommonOperate.tsx'

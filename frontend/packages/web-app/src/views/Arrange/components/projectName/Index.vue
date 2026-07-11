@@ -1,9 +1,9 @@
 <script lang="ts" setup>
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { nextTick, reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { useProcessStore } from '@/stores/useProcessStore'
 
 interface FormState {
@@ -35,7 +35,7 @@ async function editProjectName() {
         componentId: formState.robotId as string,
       })
 
-      await renameComponent({
+      await rpaApi.projects.renameComponent({
         newName: formState.newName,
         componentId: formState.robotId as string,
       })

@@ -1,3 +1,4 @@
+import { rpaApi } from '@rpa/shared'
 /**
  *  市场数据
  */
@@ -5,7 +6,6 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { rpaApi } from '@rpa/shared'
 import { APPLICATION } from '@/constants/menu'
 
 const TEAM_KEY = 'teamMarket'
@@ -36,7 +36,8 @@ export const useMarketStore = defineStore('market', () => {
   // 获取团队市场数据
   const getTeamList = (id: string = '', isEdit: boolean = false) => {
     return new Promise((resolve, reject) => {
-      rpaApi.market.getTeams().then((res) => { const data = res.data || []
+      rpaApi.market.getTeams().then((res) => {
+        const data = res.data || []
         setMarketData(TEAM_KEY, data)
         if (route.name === APPLICATION) {
           setCurrentMarketItem(APPLICATION_KEY)

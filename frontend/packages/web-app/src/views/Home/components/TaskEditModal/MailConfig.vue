@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { MailOutlined } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useTranslation } from 'i18next-vue'
 import { inject, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { MailListModal } from '@/components/MailModal'
 import { EMAIL_OPTIONS_MAP } from '@/constants/mail'
 import type { Mail } from '@/types/schedule'

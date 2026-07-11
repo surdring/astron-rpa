@@ -1,5 +1,5 @@
 import type { InsForgeUser } from '@rpa/components/auth'
-import { signInWithPassword, signOut, getCurrentUser } from '@rpa/components/auth'
+import { getCurrentUser, signInWithPassword, signOut } from '@rpa/components/auth'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 

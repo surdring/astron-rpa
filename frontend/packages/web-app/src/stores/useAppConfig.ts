@@ -42,7 +42,7 @@ export const useAppConfigStore = defineStore('appConfig', () => {
   // 应用配置
   const { state: appConfig } = useAsyncState<IAppConfig>(utilsManager.getAppConfig, {
     remote_addr: '',
-    app_auth_type: ENV.VITE_AUTH_TYPE || 'casdoor',
+    app_auth_type: ENV.VITE_AUTH_TYPE || 'insforge',
     app_edition: ENV.VITE_EDITION || 'saas',
   })
 

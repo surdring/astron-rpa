@@ -1,4 +1,4 @@
-import { logout, userInfo } from './api/login'
+import { getCurrentAuthUser, loginWithEmail, logout, logoutInsforge, registerWithEmail, userInfo } from './api/login'
 import Consult from './components/Base/Consult/Index.vue'
 import PageLayout from './components/Base/PageLayout/Index.vue'
 import Invite from './components/Invite/Index.vue'
@@ -20,8 +20,9 @@ export const Auth = {
   userInfo,
 }
 
+export * from '../../insforge'
 export * from './interface'
 export default LoginForm
 
-// InsForge SDK 认证方法（渐进式改造入口）
-export * from '../../insforge'
+// 新增 InsForge 邮箱认证便捷方法，供 web-app 使用
+export { getCurrentAuthUser, loginWithEmail, logoutInsforge, registerWithEmail }

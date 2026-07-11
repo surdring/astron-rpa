@@ -5,6 +5,7 @@ Computer Use Agent - 使用视觉大模型操作电脑
 
 import base64
 import json
+import os
 import tempfile
 import time
 from datetime import datetime
@@ -37,7 +38,7 @@ click(point='<point>x1 y1</point>')
 left_double(point='<point>x1 y1</point>')
 right_single(point='<point>x1 y1</point>')
 drag(start_point='<point>x1 y1</point>', end_point='<point>x2 y2</point>')
-hotkey(key='ctrl c') # Split keys with a space and use lowercase. Also, do not use more than 3 keys in one hotkey action.
+hotkey(key='ctrl c') # Split keys with a space and use lowercase. Also, do not use more than 3 keys in one hotkey action. 
 type(content='xxx') # Use escape characters \\', \\\", and \\n in content part to ensure we can parse the content in normal python string format. If you want to submit your input, use \\n at the end of content. 
 scroll(point='<point>x1 y1</point>', direction='down or up or right or left') # Show more information on the `direction` side.
 wait() #Sleep for 5s and take a screenshot to check for any changes.
@@ -51,9 +52,15 @@ finished(content='xxx') # Use escape characters \\', \\", and \\n in content par
 {instruction}
 """
 
-API_URL = "http://127.0.0.1:{}/api/rpa-ai-service/cua/chat".format(
-    atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-)
+
+def _ai_service_url() -> str:
+    """获取 ai-service 基础 URL（从环境变量读取，默认指向远程服务）。"""
+    return os.getenv("AI_SERVICE_URL", "http://172.16.100.211:8001")
+
+
+def _cua_chat_url() -> str:
+    """CUA chat 端点：由本地网关转发改为直连 ai-service。"""
+    return f"{_ai_service_url()}/cua/chat"
 
 
 class ComputerUseAgent:
@@ -299,11 +306,14 @@ class ComputerUseAgent:
             模型响应文本
         """
 
+        url = _cua_chat_url()
         try:
             # 发送 API 请求
             request_body = {"messages": messages}
-            response = requests.post(API_URL, json=request_body)
+            logger.info("cua chat request: url=%s message_count=%s", url, len(messages))
+            response = requests.post(url, json=request_body)
             response.raise_for_status()  # 检查请求是否成功
+            logger.info("cua chat response: url=%s status=%s", url, response.status_code)
 
             # 返回模型生成的回复
             response_json = response.json()
@@ -319,10 +329,10 @@ class ComputerUseAgent:
                 raise ValueError("未知的响应格式")
 
         except requests.exceptions.RequestException as e:
-            logger.info(f"请求错误: {e}")
+            logger.info("cua chat request error: url=%s error=%s", url, e)
             return None
         except KeyError:
-            logger.info("响应格式不正确")
+            logger.info("cua chat response format invalid: url=%s", url)
             return None
 
     def limit_screenshots_in_history(self) -> None:

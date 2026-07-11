@@ -1,4 +1,6 @@
 remote_addr: http://127.0.0.1:32742/
 skip_engine_start: false
-app_auth_type: casdoor
+app_auth_type: insforge
 app_edition: saas
+VITE_INSFORGE_URL: http://172.16.100.211:7130
+VITE_INSFORGE_ANON_KEY: anon_a88304ba461724216502b11fc0384d3f2fa2187dad2716768b85bf6574933e8f

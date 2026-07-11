@@ -253,7 +253,7 @@ const Debugger = {
     })
   },
   // handle console messages to capture execution context IDs for same-origin frames
-  handleConsoleMessage: async (source: chrome.debugger.Debuggee, params: { args: any; executionContextId: any }) => {
+  handleConsoleMessage: async (source: chrome.debugger.Debuggee, params: { args: any, executionContextId: any }) => {
     for (const arg of params.args) {
       const logVal = arg.value
       if (typeof logVal === 'string' && logVal.startsWith('rpa_debugger_on:')) {

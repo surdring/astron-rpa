@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { rpaApi } from '@rpa/shared'
 import { onBeforeUnmount, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { startPickServices, stopPickServices } from '@/api/engine'
-import { rpaApi } from '@rpa/shared'
 import Header from '@/components/Header.vue'
 import HeaderControl from '@/components/HeaderControl/HeaderControl.vue'
 import { useProcessStore } from '@/stores/useProcessStore'

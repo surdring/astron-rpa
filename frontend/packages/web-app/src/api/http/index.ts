@@ -1,3 +1,4 @@
+import { getSessionToken } from '@rpa/components/auth'
 import { message } from 'ant-design-vue'
 import type {
   AxiosInstance,
@@ -12,7 +13,6 @@ import { isNil } from 'lodash-es'
 import { promiseWithResolvers } from '@/utils/common'
 
 import { ERROR_CODES, SUCCESS_CODES, UN_AUTHORIZED_CODES } from '@/constants'
-import { getSessionToken } from '@rpa/components/auth'
 
 import { getBaseURL, unauthorize } from './env'
 

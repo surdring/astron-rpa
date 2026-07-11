@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { CodeEditor } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useDark } from '@vueuse/core'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
@@ -7,7 +8,6 @@ import { throttle } from 'lodash-es'
 import { computed, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { rpaApi } from '@rpa/shared'
 import { getBaseURL } from '@/api/http/env'
 import { useFlowStore } from '@/stores/useFlowStore'
 import { useProcessStore } from '@/stores/useProcessStore'

@@ -1,10 +1,10 @@
 import { SearchOutlined } from '@ant-design/icons-vue'
 import { Icon } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { Tooltip } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { computed, h, reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import type { TableOption } from '@/components/NormalTable'
 
 import OperMenu from '../../../components/OperMenu.vue'

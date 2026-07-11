@@ -1,9 +1,9 @@
 import { ProfileOutlined } from '@ant-design/icons-vue'
+import { rpaApi } from '@rpa/shared'
 import { Button, Table, Tooltip } from 'ant-design-vue'
 
 import { getDurationText } from '@/utils/dayjsUtils'
 
-import { rpaApi } from '@rpa/shared'
 import StatusCircle from '@/views/Home/components/StatusCircle.vue'
 import { useCommonOperate } from '@/views/Home/pages/hooks/useCommonOperate.tsx'
 

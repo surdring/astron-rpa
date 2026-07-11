@@ -1,10 +1,10 @@
+import { rpaApi } from '@rpa/shared'
 import type { SegmentedProps } from 'ant-design-vue'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
-import { rpaApi } from '@rpa/shared'
 import { APPLICATIONMARKET, EDITORPAGE, TEAMMARKETS } from '@/constants/menu'
 import { useRoutePush } from '@/hooks/useCommonRoute'
 import { useMarketStore } from '@/stores/useMarketStore'
@@ -91,7 +91,8 @@ export function useMessageTip() {
 
   // 刷新消息
   const refresh = async () => {
-    hasBadage.value = await getNewMessage()
+    const { data } = await rpaApi.market.getNewMessage()
+    hasBadage.value = data
   }
 
   const toastMessage = (data, custom, id?) => {
@@ -141,7 +142,7 @@ export function useMessageTip() {
 
   // 全部已读
   const allRead = async () => {
-    const data = await setAllRead()
+    const { data } = await rpaApi.market.setAllRead()
     toastMessage(data, ALLREADNUM)
     refresh()
   }

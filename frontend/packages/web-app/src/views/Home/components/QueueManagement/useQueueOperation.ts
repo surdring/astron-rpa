@@ -1,9 +1,9 @@
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { computed, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { QueueConfigModal } from '@/components/QueueConfigModal'
 import { useCommonOperate } from '@/views/Home/pages/hooks/useCommonOperate.tsx'
 

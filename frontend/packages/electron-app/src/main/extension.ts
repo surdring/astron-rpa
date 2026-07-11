@@ -1,7 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import to from 'await-to-js'
+
 import type { IPluginConfig } from '@rpa/shared'
+import to from 'await-to-js'
 
 import { extensionPath } from './path'
 
@@ -47,21 +48,24 @@ export async function init() {
 
       // 检查是否为目录
       const [errItemStats, itemStats] = await to(fs.promises.stat(itemPath))
-      if (errItemStats || !itemStats.isDirectory()) return
+      if (errItemStats || !itemStats.isDirectory())
+        return
 
       const manifestJsonPath = path.join(itemPath, 'mf-manifest.json')
 
       // 检查 mf-manifest.json 是否存在
       const [errManifestStats, manifestStats] = await to(fs.promises.stat(manifestJsonPath))
-      if (errManifestStats || !manifestStats.isFile()) return
+      if (errManifestStats || !manifestStats.isFile())
+        return
 
       const [errContent, content] = await to(fs.promises.readFile(manifestJsonPath, 'utf-8'))
-      if (errContent) return
+      if (errContent)
+        return
 
       try {
         const manifest: MainManifest = JSON.parse(content)
         const resourcePath = itemPath
-        const entryUrl = manifest.metaData.publicPath + 'mf-manifest.json'
+        const entryUrl = `${manifest.metaData.publicPath}mf-manifest.json`
 
         validExtensions.push({
           name: manifest.name,
@@ -71,9 +75,10 @@ export async function init() {
             version: manifest.metaData.buildInfo.buildVersion,
             entry: entryUrl,
             enabled: true,
-          }
+          },
         })
-      } catch (err) {
+      }
+      catch (err) {
         // JSON 解析失败
         console.error(`Error parsing manifest at ${manifestJsonPath}:`, err)
       }
@@ -91,7 +96,7 @@ init()
 
 export const loadExtensions = () => extensions.map(it => it.config)
 
-export const getExtensionResourcePath = (name: string) => {
+export function getExtensionResourcePath(name: string) {
   const extension = extensions.find(it => it.name === name)
   return extension?.resourcePath || ''
 }

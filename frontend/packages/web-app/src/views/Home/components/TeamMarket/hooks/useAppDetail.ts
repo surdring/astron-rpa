@@ -1,6 +1,6 @@
+import { rpaApi } from '@rpa/shared'
 import { ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { fromIcon } from '@/components/PublishComponents/utils'
 
 export function useAppDetail(params: { marketId: string, appId: string }) {

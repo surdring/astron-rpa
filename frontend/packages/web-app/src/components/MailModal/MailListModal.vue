@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import { PlusCircleOutlined } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { Popconfirm } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { h, reactive, ref } from 'vue'
-
-import { rpaApi } from '@rpa/shared'
 
 import { MailModal } from './index'
 

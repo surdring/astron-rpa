@@ -1,7 +1,7 @@
+import { rpaApi } from '@rpa/shared'
 import { createInjectionState } from '@vueuse/core'
 import { onBeforeMount, ref, shallowRef } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { VIEW_OWN } from '@/constants/resource'
 
 import type { Version } from '../components/VersionTable/index.vue'
@@ -29,7 +29,7 @@ const [useProvideBasicStore, useBasicStore] = createInjectionState((robotId: str
     loading.value = true
     const apiFn = source === VIEW_OWN
       ? () => rpaApi.robots.getMyRobotDetail(robotId).then(r => r.data)
-      : () => rpaApi.robots.getMarketRobotDetail(robotId).then(r => {
+      : () => rpaApi.robots.getMarketRobotDetail(robotId).then((r) => {
           const { myRobotDetailVo, sourceName, versionInfoList } = r.data
           return { ...myRobotDetailVo, sourceName, versionList: versionInfoList }
         })

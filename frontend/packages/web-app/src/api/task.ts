@@ -1,3 +1,5 @@
+import { rpaApi } from '@rpa/shared'
+
 import type { ITableResponse } from '@/types/normalTable'
 import type { Task } from '@/types/schedule'
 
@@ -38,9 +40,9 @@ export function manualTrigger(data: { task_id: string }) {
   return http.post('/trigger/task/run', data)
 }
 
-// taskNotify 通知触发器更新
+// taskNotify 通知触发器更新（已迁移到 InsForge notify Edge Function）
 export function taskNotify(params = { event: 'normal' }) {
-  return http.post('/trigger/task/notify', params, { toast: false })
+  return rpaApi.tasks.taskNotify(params)
 }
 
 // 获取计划任务未来执行时间

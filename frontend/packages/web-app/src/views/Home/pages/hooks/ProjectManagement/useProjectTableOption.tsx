@@ -1,8 +1,8 @@
 import { SearchOutlined } from '@ant-design/icons-vue'
+import { rpaApi } from '@rpa/shared'
 import { storeToRefs } from 'pinia'
 import { reactive, ref, watch } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import type { TableOption } from '@/components/NormalTable'
 import type { VIEW_OTHER } from '@/constants/resource'
 import { VIEW_OWN } from '@/constants/resource'

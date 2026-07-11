@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Auth } from '@rpa/components/auth'
+import { rpaApi } from '@rpa/shared'
 import { message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { ARRANGE } from '@/constants/menu'
 import { useRoutePush } from '@/hooks/useCommonRoute'
 import { useAppConfigStore } from '@/stores/useAppConfig'

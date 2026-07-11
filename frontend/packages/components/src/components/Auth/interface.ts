@@ -1,6 +1,6 @@
 export type Platform = 'client' | 'admin' | 'invite'
 export type Edition = 'saas' | 'enterprise'
-export type AuthType = 'uap' | 'casdoor'
+export type AuthType = 'uap' | 'casdoor' | 'insforge'
 export type LoginMode = 'PASSWORD' | 'CODE'
 export type RegisterMode = 'REGISTER' | 'CONSULT'
 export type AuthFormMode = 'login' | 'register' | 'forgotPassword' | 'setPassword' | 'tenantSelect' | 'forgotPasswordWithSysUpgrade' | 'setPasswordWithSysUpgrade' | 'modifyPassword'
@@ -8,12 +8,14 @@ export type AsyncAction = 'IDLE' | 'PASSWORD' | 'CODE' | 'REGISTER' | 'CONSULT' 
 
 export interface LoginFormData {
   loginName?: string
+  email?: string
   password?: string
   remember?: boolean
   agreement?: boolean
   phone?: string
   captcha?: string
   loginType?: 'CODE' | 'PASSWORD'
+  /** @deprecated tenant 概念已随旧网关废弃，仅在 uap/casdoor 过渡期兼容 */
   tenantId?: string
   confirmPassword?: string
   oldPassword?: string
@@ -52,6 +54,7 @@ export interface InviteInfo {
 
 export interface RegisterFormData {
   loginName: string
+  email?: string
   phone?: string
   captcha?: string
   password?: string

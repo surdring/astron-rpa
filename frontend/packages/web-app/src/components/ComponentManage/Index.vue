@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { useAsyncState } from '@vueuse/core'
 import { Empty } from 'ant-design-vue'
 import { isEmpty } from 'lodash-es'
 
-import { rpaApi } from '@rpa/shared'
 import { useProcessStore } from '@/stores/useProcessStore'
 
 import Panel from './Panel.vue'

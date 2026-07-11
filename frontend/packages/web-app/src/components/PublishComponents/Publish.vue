@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { rpaApi } from '@rpa/shared'
 import { Button, Checkbox, message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import type { PropType } from 'vue'
 import { computed, defineAsyncComponent, ref, useTemplateRef } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { useCommonOperate } from '@/views/Home/pages/hooks/useCommonOperate'
 
 import type BasicForm from './BasicForm.vue'

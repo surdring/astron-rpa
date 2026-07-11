@@ -61,7 +61,7 @@ export function useLoginForm<M extends LoginMode>(
   onMounted(() => {
     const remembered = getRememberUser()
     if (mode === 'PASSWORD' && remembered && remembered.edition === opts.edition && remembered.authType === opts.authType) {
-      const accountKey = opts.authType === 'uap' ? 'phone' : 'loginName'
+      const accountKey = opts.authType === 'uap' ? 'phone' : opts.authType === 'insforge' ? 'email' : 'loginName'
       formData[accountKey] = remembered.account
       formData.password = remembered.password
       formData.remember = true

@@ -262,7 +262,7 @@ export function findFirstPermittedRoute(permStore: ReturnType<typeof usePermissi
   return found ? { name: found.name } : null
 }
 
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach(async (to, _from) => {
   const permissionStore = usePermissionStore()
 
   if (to.meta?.permission) {
@@ -271,15 +271,15 @@ router.beforeEach(async (to, _from, next) => {
 
     const resource = (to.meta.resource as string) || (to.name as string)
     if (permissionStore.can(resource, 'all'))
-      return next()
+      return true
     const first = findFirstPermittedRoute(permissionStore)
     if (first)
-      return next(first)
+      return first
 
     window.location.href = '/boot.html?code=403' // 无权限访问，跳转到登录页
-    return
+    return false
   }
-  next()
+  return true
 })
 
 export default router

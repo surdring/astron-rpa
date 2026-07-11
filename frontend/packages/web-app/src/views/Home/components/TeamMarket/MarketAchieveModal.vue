@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { QuestionCircleOutlined } from '@ant-design/icons-vue'
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import type { FormInstance } from 'ant-design-vue'
 import { Input, message, Tooltip } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { h, reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { ACTUATOR, DESIGNER } from '@/constants/menu'
 import { usePermissionStore } from '@/stores/usePermissionStore'

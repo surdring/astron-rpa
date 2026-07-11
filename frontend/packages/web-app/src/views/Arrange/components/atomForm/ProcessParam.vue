@@ -1,5 +1,6 @@
 <!-- 子流程选择组件 -->
 <script setup lang="ts">
+import { crudApi } from '@rpa/shared'
 import { useTranslation } from 'i18next-vue'
 import { find, get, has, isArray, isEmpty, isEqual, some } from 'lodash-es'
 import { computed, ref, toRaw, watch } from 'vue'
@@ -7,7 +8,6 @@ import type { VxeGridProps } from 'vxe-table'
 
 import VxeGrid from '@/plugins/VxeTable'
 
-import { crudApi } from '@rpa/shared'
 import { OTHER_IN_TYPE } from '@/constants/atom'
 import { useFlowStore } from '@/stores/useFlowStore'
 import { useProcessStore } from '@/stores/useProcessStore.ts'

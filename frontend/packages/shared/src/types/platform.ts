@@ -3,7 +3,7 @@ import type { IPluginConfig } from './plugin'
 export interface IAppConfig {
   remote_addr: string
   skip_engine_start?: boolean
-  app_auth_type: 'uap' | 'casdoor'
+  app_auth_type: 'uap' | 'casdoor' | 'insforge'
   app_edition: 'saas' | 'enterprise'
 }
 

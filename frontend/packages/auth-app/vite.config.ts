@@ -16,7 +16,7 @@ export default defineConfig({
       include: [/\.vue$/, /\.md$/],
     }),
     vueJsx(),
-    svg4VuePlugin({ 
+    svg4VuePlugin({
       assetsDirName: false,
       svgoConfig: false,
     }),

@@ -70,7 +70,7 @@ watch(() => phone.formData.agreement, (v) => {
         {{ $t('auth.welcome', { app: $t('app') }) }}
       </div>
       <div class="text-[12px] text-[#000000A6] mb-[24px] text-center dark:text-[#FFFFFF] font-sans">
-        {{ $t('auth.useAuthAccount', { auth: authType === 'casdoor' ? 'Casdoor' : $t('auth.iflytek') }) }}
+        {{ $t('auth.useAuthAccount', { auth: authType === 'casdoor' ? 'Casdoor' : authType === 'insforge' ? 'InsForge' : $t('auth.iflytek') }) }}
       </div>
     </template>
     <Tabs
@@ -90,7 +90,7 @@ watch(() => phone.formData.agreement, (v) => {
         />
       </TabPane>
 
-      <TabPane v-if="phone.config" key="CODE" :tab="$t('auth.codeLogin')">
+      <TabPane v-if="phone.config && authType !== 'insforge'" key="CODE" :tab="$t('auth.codeLogin')">
         <DynamicForm
           :ref="phone.formRef"
           v-model="phone.formData"

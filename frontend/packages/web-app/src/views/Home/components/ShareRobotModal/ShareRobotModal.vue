@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import type { FormInstance } from 'ant-design-vue'
 import { Form, message, Select, Switch } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import Avatar from '@/components/Avatar/Avatar.vue'
 import type { AnyObj } from '@/types/common'
 import { useCommonOperate } from '@/views/Home/pages/hooks/useCommonOperate'

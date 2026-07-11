@@ -1,9 +1,9 @@
+import { rpaApi } from '@rpa/shared'
 import { Button, message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { storeToRefs } from 'pinia'
 import { h, inject, reactive, ref, watch } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { TEAMMARKETS } from '@/constants/menu'
 import { useRoutePush } from '@/hooks/useCommonRoute'

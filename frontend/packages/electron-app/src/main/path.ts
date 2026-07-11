@@ -20,10 +20,10 @@ export const extensionPath = [
   path.join(appWorkPath, 'extensions'), // 用户插件目录
 ]
 export const extensionHost = 'extensions'
-export const extensionBaseUrl =  `rpa://${extensionHost}/`
+export const extensionBaseUrl = `rpa://${extensionHost}/`
 
 export const rendererPath = path.join(__dirname, '../renderer')
-export const windowBaseUrl  = app.isPackaged ? 'rpa://localhost/' : 'http://localhost:1420/'
+export const windowBaseUrl = app.isPackaged ? 'rpa://localhost/' : 'http://localhost:1420/'
 
 export function openPath(targetPath: string): Promise<void> {
   return new Promise((resolve, reject) => {

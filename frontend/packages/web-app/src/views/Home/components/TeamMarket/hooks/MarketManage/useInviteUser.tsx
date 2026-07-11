@@ -1,10 +1,10 @@
+import { rpaApi } from '@rpa/shared'
 import { Button, message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { debounce } from 'lodash-es'
 import { storeToRefs } from 'pinia'
 import { reactive, ref } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import { useAppConfigStore } from '@/stores/useAppConfig'
 import { MARKET_USER_COMMON } from '@/views/Home/components/TeamMarket/config/market'
 import RoleDropdown from '@/views/Home/components/TeamMarket/MarketManage/RoleDropdown.vue'

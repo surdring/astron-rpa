@@ -25,8 +25,11 @@ class VerifyCodeCore:
         headers = {
             "Content-Type": "application/json",
         }
-        response = requests.post(VerifyCodeConfig.url, headers=headers, json=data).json()
-        result = response["data"]["data"]
+        url = VerifyCodeConfig.url()
+        logger.info("verifycode request: url=%s api_type=%s", url, api_type)
+        response = requests.post(url, headers=headers, json=data)
+        logger.info("verifycode response: url=%s status=%s", url, response.status_code)
+        result = response.json()["data"]["data"]
         return result
 
     @staticmethod

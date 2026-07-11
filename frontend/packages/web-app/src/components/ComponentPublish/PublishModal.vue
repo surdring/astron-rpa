@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import type { FormInstance } from 'ant-design-vue'
 import { Drawer, message } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { reactive, ref, useTemplateRef } from 'vue'
 
-import { rpaApi } from '@rpa/shared'
 import AvatarSelect from '@/components/Avatar/AvatarSelect.vue'
 import { COMPONENT_DEFAULT_ICON } from '@/constants/avatar'
 

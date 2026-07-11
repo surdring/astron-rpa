@@ -24,6 +24,7 @@ export function useRegisterForm(
 
   const formData = reactive<RegisterFormData>({
     loginName: '',
+    email: '',
     phone: '',
     password: '',
     confirmPassword: '',

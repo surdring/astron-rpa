@@ -1,15 +1,16 @@
 import type { TenantItem } from '@rpa/components/auth'
-import { Auth } from '@rpa/components/auth'
+import { Auth, getCurrentAuthUser } from '@rpa/components/auth'
+import { rpaApi } from '@rpa/shared'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import i18next from '@/plugins/i18next'
 
 import { getTermianlStatus } from '@/api/engine'
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { useRoutePush } from '@/hooks/useCommonRoute'
 import router, { findFirstPermittedRoute } from '@/router'
+import { useAppConfigStore } from '@/stores/useAppConfig'
 import { usePermissionStore } from '@/stores/usePermissionStore'
 import { useRunningStore } from '@/stores/useRunningStore'
 
@@ -22,11 +23,15 @@ export const useUserStore = defineStore('user', () => {
   })
 
   async function getUserInfo() {
-    if (!currentUserInfo.value) {
-      const data = await Auth.userInfo()
-      currentUserInfo.value = data
-    }
-    return currentUserInfo.value
+    if (currentUserInfo.value)
+      return currentUserInfo.value
+
+    const { appInfo } = useAppConfigStore()
+    const data = appInfo.appAuthType === 'insforge'
+      ? await getCurrentAuthUser()
+      : await Auth.userInfo()
+    currentUserInfo.value = data
+    return data
   }
 
   async function beforeSwitch(): Promise<void> {

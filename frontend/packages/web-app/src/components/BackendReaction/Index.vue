@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { rpaApi } from '@rpa/shared'
 /**
  *  全局主进程事件监听
  *  1、监听主进程事件，处理渲染进程需要执行的逻辑
@@ -18,7 +19,6 @@ import $loading from '@/utils/globalLoading'
 
 import { endSchedulingMode, stopSchedulingTask } from '@/api/engine'
 import http from '@/api/http'
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { WINDOW_NAME } from '@/constants'
 import { EDITORPAGE, SMARTCOMPONENT } from '@/constants/menu'

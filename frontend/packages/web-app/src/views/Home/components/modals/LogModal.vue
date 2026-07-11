@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { NiceModal } from '@rpa/components'
+import { rpaApi } from '@rpa/shared'
 import { Drawer } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { computed, onMounted, provide, ref, watch } from 'vue'
 
 import { blob2Text, text2LogArray } from '@/utils/common'
 
-import { rpaApi } from '@rpa/shared'
 import { fileRead } from '@/api/resource'
 import GlobalModal from '@/components/GlobalModal'
 import RunLog from '@/components/RunLog/index.vue'

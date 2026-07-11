@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Auth } from '@rpa/components/auth'
+import { rpaApi } from '@rpa/shared'
 import { Button, Checkbox, Dropdown } from 'ant-design-vue'
 import { useTranslation } from 'i18next-vue'
 import { storeToRefs } from 'pinia'
 import { computed, h } from 'vue'
 
 import { getTermianlStatus, startSchedulingMode } from '@/api/engine'
-import { rpaApi } from '@rpa/shared'
 import GlobalModal from '@/components/GlobalModal/index.ts'
 import { utilsManager, windowManager } from '@/platform'
 import { useAppConfigStore } from '@/stores/useAppConfig'

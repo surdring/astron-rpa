@@ -1,12 +1,17 @@
+import os
 from enum import Enum
 
-from astronverse.actionlib.atomic import atomicMg
+
+def _ai_service_url() -> str:
+    """获取 ai-service 基础 URL（从环境变量读取，默认指向远程服务）。"""
+    return os.getenv("AI_SERVICE_URL", "http://172.16.100.211:8001")
 
 
 class VerifyCodeConfig:
-    url = "http://127.0.0.1:{}/api/rpa-ai-service/jfbym/customApi".format(
-        atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-    )
+    @staticmethod
+    def url() -> str:
+        """验证码识别端点：由本地网关转发改为直连 ai-service。"""
+        return f"{_ai_service_url()}/jfbym/customApi"
 
 
 class PictureCodeType(Enum):
