@@ -12,6 +12,7 @@ dependencies = [
     "fastapi",
     "keyboard",
     "pydantic",
+    "python-socketio[client]>=5.11",
     "uvicorn",
     "watchfiles",
     "requests",

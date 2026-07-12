@@ -1,3 +1,5 @@
+import json
+import os
 from typing import Any
 from urllib.parse import urljoin
 
@@ -7,6 +9,11 @@ from astronverse.actionlib.error import *
 from astronverse.actionlib.types import typesMg
 from astronverse.browser import CommonForBrowserType
 from astronverse.browser.error import *
+
+
+def _browser_bridge_url() -> str:
+    """browser-bridge HTTP 服务地址。"""
+    return os.environ.get("BROWSER_BRIDGE_URL") or "http://127.0.0.1:19082"
 
 
 class Browser:
@@ -42,21 +49,24 @@ class Browser:
 
     @staticmethod
     def send_browser_rpc(req: dict, timeout: float = 0.0) -> Any:
-        """发送浏览器RPC请求。"""
-        gateway_port = atomicMg.cfg().get("GATEWAY_PORT")
-        if not gateway_port:
-            gateway_port = "13159"
-        url = f"http://127.0.0.1:{gateway_port}"
-        res = requests.post(
-            urljoin(
-                url,
-                "browser_connector",
+        """发送浏览器RPC请求，直连 browser-bridge。"""
+        url = _browser_bridge_url()
+        logger = atomicMg.cfg().get("logger")
+        try:
+            if logger:
+                logger.info("send_browser_rpc request: url=%s/browser/transition timeout=%s req=%s", url, timeout, json.dumps(req))
+            res = requests.post(
+                "{}/browser/transition".format(url),
+                json=req,
+                timeout=timeout or 10,
             )
-            + "/browser/transition",
-            json=req,
-            timeout=timeout,
-        )
-        return res
+            if logger:
+                logger.info("send_browser_rpc response: status=%s body=%s", res.status_code, res.text[:200])
+            return res
+        except Exception as e:
+            if logger:
+                logger.exception("send_browser_rpc error: %s", e)
+            raise
 
     def send_browser_extension(
         self,

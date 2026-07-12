@@ -1,3 +1,4 @@
+import { rpaApi } from '@rpa/shared'
 import type { FlowItem } from '@/views/Arrange/types/flow'
 
 import type { RequestConfig } from './http'
@@ -236,16 +237,19 @@ export function deleteGlobalVariable(data: { robotId: string, globalId: string }
   return http.post('/api/robot/global/delete', data)
 }
 
-// 上传文件
+// 上传文件到 InsForge Storage（私有 bucket：rpa-files）
 export async function uploadFile(data: { file: File }, config: RequestConfig = {}) {
-  const res = await http.postFormData<string>('/api/resource/file/upload', data, { timeout: 5000000, ...config })
-  return res.data
+  const file = data.file
+  const path = `${Date.now()}-${file.name}`
+  const { data: result, error } = await rpaApi.resources.upload(path, file)
+  if (error)
+    throw error
+  return result
 }
 
-// 发布上传视频文件
+// 发布上传视频文件（同上，业务区分保留函数名）
 export async function uploadVideoFile(data: { file: File }, config: RequestConfig = {}) {
-  const res = await http.postFormData<string>('/api/resource/file/upload-video', data, { timeout: 5000000, ...config })
-  return res.data
+  return uploadFile(data, config)
 }
 
 // 查询依赖包版本号

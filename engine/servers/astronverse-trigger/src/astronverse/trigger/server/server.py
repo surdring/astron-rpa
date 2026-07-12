@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import os
 import threading
 import time
 
@@ -21,87 +22,56 @@ from astronverse.trigger.server.gateway_client import (
     get_executor_status,
     send_stop_current,
 )
+from astronverse.trigger.server.realtime_client import TriggerRealtimeClient
 from astronverse.trigger.tasks.base_task import AsyncImmediateTask, AsyncSchedulerTask
 from astronverse.trigger.tasks.mail_task import MailTask
 from astronverse.trigger.tasks.scheduled_task import ScheduledTask
-from astronverse.websocket_client.ws import BaseMsg
-from astronverse.websocket_client.ws_client import WsApp
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
-class WebSocketManager:
-    """WebSocket 连接管理器"""
+class RealtimeManager:
+    """InsForge Realtime 远程控制连接管理器"""
 
     def __init__(self):
-        self.ws_app = None
-        self._thread = None
-        self._stop_event = threading.Event()
+        self.realtime_client: TriggerRealtimeClient | None = None
 
-    @staticmethod
-    def default_log(msg, *args, **kwargs):
-        """默认日志记录函数"""
-        logger.info("ws: {} {} {}".format(msg, args, kwargs))
-
-    @staticmethod
-    def remote_run(msg: BaseMsg):
-        """处理远程运行消息"""
-        logger.info(msg)
-        data = msg.data
-        for i in range(3):
-            if not get_executor_status():
-                return execute_single_project(data)
-            else:
-                time.sleep(2)
-        return {"code": "5001", "msg": "有任务在运行中", "data": None}
-
-    @staticmethod
-    def remote_stop_current(msg: BaseMsg):
-        """处理远程停止消息"""
-        logger.info(msg)
-        if get_executor_status():
-            return send_stop_current()
-        return {"code": "5001", "msg": "没有任务在运行中", "data": None}
+    def _resolve_user_id(self) -> str | None:
+        """从环境变量或 app_context 解析当前用户 ID。"""
+        user_id = os.environ.get("INSFORGE_USER_ID")
+        if user_id:
+            return user_id
+        if app_context and hasattr(app_context, "user_id"):
+            return app_context.user_id
+        return None
 
     def start(self):
-        """启动 WebSocket 连接"""
+        """启动 Realtime 连接"""
         try:
-            if self._thread and self._thread.is_alive():
-                logger.info("WebSocket 管理器已在运行")
+            if self.realtime_client and self.realtime_client.sio.connected:
+                logger.info("Realtime 管理器已在运行")
                 return
-            self._stop_event.clear()
-            self.ws_app = WsApp(
-                url=f"ws://127.0.0.1:{config.GATEWAY_PORT}/api/rpa-openapi/ws",
-                log=self.default_log,
-                reconnect_max_time=-1,
-            )
-            self.ws_app.event("remote", "run", self.remote_run)
-            self.ws_app.event("remote", "stop_current", self.remote_stop_current)
 
-            self._thread = threading.Thread(target=self._ws_worker, daemon=True)
-            self._thread.start()
+            user_id = self._resolve_user_id()
+            if not user_id:
+                logger.error("未配置 INSFORGE_USER_ID，无法启动 Realtime 远程控制")
+                return
 
-            logger.info("WebSocket 管理器启动成功")
+            self.realtime_client = TriggerRealtimeClient(user_id)
+            self.realtime_client.start()
+            logger.info("Realtime 管理器启动成功")
         except Exception as e:
-            logger.error(f"WebSocket 管理器启动失败: {e}")
-
-    def _ws_worker(self):
-        """WebSocket 工作线程"""
-        try:
-            self.ws_app.start()
-        except Exception as e:
-            logger.error(f"WebSocket 工作线程异常: {e}")
+            logger.error(f"Realtime 管理器启动失败: {e}")
 
     def stop(self):
-        """停止 WebSocket 连接"""
-        self._stop_event.set()
-        if self.ws_app:
-            self.ws_app.close()
-        if self._thread and self._thread.is_alive():
-            self._thread.join(timeout=5)
-        self._thread = None
-        self.ws_app = None
-        logger.info("WebSocket 管理器已停止")
+        """停止 Realtime 连接"""
+        try:
+            if self.realtime_client:
+                self.realtime_client.stop()
+            self.realtime_client = None
+            logger.info("Realtime 管理器已停止")
+        except Exception as e:
+            logger.error(f"Realtime 管理器停止失败: {e}")
 
     def close_connection(self):
         """关闭当前连接"""
@@ -112,8 +82,8 @@ class WebSocketManager:
         self.start()
 
 
-# 创建 WebSocket 管理器实例
-ws_manager = WebSocketManager()
+# 创建 Realtime 管理器实例
+ws_manager = RealtimeManager()
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

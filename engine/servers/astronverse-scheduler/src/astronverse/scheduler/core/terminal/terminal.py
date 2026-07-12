@@ -1,4 +1,5 @@
 import json
+import os
 import os.path
 import platform
 import random
@@ -17,10 +18,37 @@ def generate_password(length=8):
     return "".join(random.choice(chars) for _ in range(length))
 
 
+def _insforge_base_url():
+    """InsForge API 地址（用于调用 Edge Functions）"""
+    return os.environ.get("INSFORGE_API_URL") or "http://172.16.100.211:7130"
+
+
+def _invoke_rpa_terminal(action: str, payload: dict):
+    """调用 rpa-terminal Edge Function。"""
+    url = "{}/functions/rpa-terminal?action={}".format(_insforge_base_url(), action)
+    headers = {"Content-Type": "application/json"}
+    token = os.environ.get("INSFORGE_JWT_TOKEN")
+    if token:
+        headers["Authorization"] = "Bearer {}".format(token)
+    try:
+        logger.info("rpa-terminal request: action=%s url=%s payload=%s", action, url, json.dumps(payload))
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        status_code = response.status_code
+        text = response.text
+        logger.info("rpa-terminal response: action=%s status=%s body=%s", action, status_code, text[:200])
+        response.raise_for_status()
+        result = response.json()
+        if isinstance(result, dict) and result.get("code") != 200:
+            raise Exception("rpa-terminal returned code {}: {}".format(result.get("code"), result.get("message")))
+        return result.get("data") if isinstance(result, dict) else result
+    except Exception as e:
+        logger.exception("[APP] request rpa-terminal action=%s error: %s", action, e)
+        raise
+
+
 class Terminal:
     @staticmethod
     def register(svc):
-        api = "/api/robot/terminal/register"
         try:
             if not terminal_id:
                 logger.error("terminal_id 为空")
@@ -43,28 +71,24 @@ class Terminal:
                 "monitorUrl": "/terminal/ping",  # 视频监控URL
             }
             logger.info("Terminal register data: {}".format(data))
-            response = requests.post(
-                url="http://127.0.0.1:{}{}".format(svc.rpa_route_port, api),
-                json=data,
-                timeout=10,
-            )
-            status_code = response.status_code
-            text = response.text
-            if status_code != 200:
-                raise Exception("get error status_code: {}".format(status_code))
-            return json.loads(text.strip())["data"]
+            result = _invoke_rpa_terminal("register", data)
+            # 缓存注册返回的 robot_id，供心跳使用
+            if result and isinstance(result, dict) and result.get("id"):
+                Terminal.robot_id = result.get("id")
+                logger.info("Terminal registered: robot_id=%s", Terminal.robot_id)
+            return result
         except Exception as e:
-            logger.exception("[APP] request api: {} error: {}".format(api, e))
+            logger.exception("[APP] request rpa-terminal register error: {}".format(e))
 
     @staticmethod
     def upload(svc):
-        api = "/api/robot/terminal/beat"
         try:
             if not terminal_id:
                 logger.error("terminal_id 为空")
                 return
             data = {
                 "terminalId": terminal_id,  # 终端唯一标识，如设备mac地址
+                "robotId": getattr(Terminal, "robot_id", None),  # 注册后缓存的 robot_id
                 "status": "busy"
                 if svc.executor_mg.status()
                 else "free",  # 当前状态，用于计算最终状态，只有两种状态，运行中busy，空闲free
@@ -73,23 +97,10 @@ class Terminal:
                 "memory": int(Terminal.get_memory_percent()),  # 内存占用率（百分比)
                 "disk": int(Terminal.get_disk_percent()),  # 硬盘占用率（百分比)
             }
-            logger.info("Terminal upload data: {}".format(data))
-            response = requests.post(
-                url="http://127.0.0.1:{}{}".format(svc.rpa_route_port, api),
-                json=data,
-                timeout=10,
-            )
-            status_code = response.status_code
-            text = response.text
-            if status_code != 200:
-                raise Exception("get error status_code: {}".format(status_code))
-            res = json.loads(text.strip())
-            if "data" not in res:
-                # 没有登录，返回None
-                return None
-            return json.loads(text.strip())["data"]
+            logger.info("Terminal heartbeat data: {}".format(data))
+            return _invoke_rpa_terminal("beat", data)
         except Exception as e:
-            logger.exception("[APP] request api: {} error: {}".format(api, e))
+            logger.exception("[APP] request rpa-terminal beat error: {}".format(e))
 
     @staticmethod
     def get_terminal_id():

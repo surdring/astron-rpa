@@ -31,6 +31,33 @@ from astronverse.scheduler.utils.utils import (
 )
 
 
+def _insforge_base_url():
+    return os.environ.get("INSFORGE_API_URL") or "http://172.16.100.211:7130"
+
+
+def _invoke_rpa_execution(action: str, payload: dict):
+    """调用 rpa-execution Edge Function。"""
+    url = "{}/functions/rpa-execution?action={}".format(_insforge_base_url(), action)
+    headers = {"Content-Type": "application/json"}
+    token = os.environ.get("INSFORGE_JWT_TOKEN")
+    if token:
+        headers["Authorization"] = "Bearer {}".format(token)
+    try:
+        logger.info("rpa-execution request: action=%s url=%s payload=%s", action, url, json.dumps(payload))
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        status_code = response.status_code
+        text = response.text
+        logger.info("rpa-execution response: action=%s status=%s body=%s", action, status_code, text[:200])
+        response.raise_for_status()
+        result = response.json()
+        if isinstance(result, dict) and result.get("code") != 200:
+            raise Exception("rpa-execution returned code {}: {}".format(result.get("code"), result.get("message")))
+        return result.get("data") if isinstance(result, dict) else result
+    except Exception as e:
+        logger.exception("[APP] request rpa-execution action=%s error: %s", action, e)
+        raise
+
+
 class ExecuteStatus(Enum):
     """
     机器人执行状态
@@ -525,7 +552,6 @@ class ExecutorManager:
         paramJson="",
     ):
         """服务端获取工程运行ID，用于日志上报"""
-        api = "/api/robot/robot-record/save-result"
         try:
             data = {
                 "robotId": project_id,
@@ -541,19 +567,10 @@ class ExecutorManager:
                 data["robotVersion"] = int(version)
             if self.svc.terminal_mod:
                 data["dispatchTaskExecuteId"] = task_exec_id
-            response = requests.post(
-                url="http://127.0.0.1:{}{}".format(self.svc.rpa_route_port, api),
-                json=data,
-                timeout=10,
-            )
-            status_code = response.status_code
-            text = response.text
-            if status_code != 200:
-                raise Exception("get error status_code: {}".format(status_code))
-            logger.info("report data: {}, response: {} {}".format(data, status_code, text))
-            return json.loads(text.strip())["data"]
+            logger.info("report save-result data: {}".format(data))
+            return _invoke_rpa_execution("save-result", data)
         except Exception as e:
-            logger.exception("[APP] request api: {} error: {}".format(api, e))
+            logger.exception("[APP] request rpa-execution save-result error: {}".format(e))
 
     def report_app_log(self, executor: Executor):
         """日志上报"""

@@ -1,6 +1,5 @@
+import { rpaApi } from '@rpa/shared'
 import { ACTUATOR, APPLICATIONMARKET, DESIGNER } from '@/constants/menu'
-
-import http from './http'
 
 const ENV = import.meta.env
 
@@ -20,7 +19,8 @@ export async function permission() {
     return ALL_MODULE_PERMISSIONS
   }
 
-  const res = await http.get('/api/rpa-auth/user/entitlement')
+  // 非 InsForge 模式（过渡期兼容）
+  const res = await rpaApi.http.get('/api/rpa-auth/user/entitlement')
   const entitlement = res.data
 
   return ALL_MODULE_PERMISSIONS.filter(i => entitlement[i.permissionKey])

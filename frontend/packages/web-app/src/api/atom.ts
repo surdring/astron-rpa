@@ -1,34 +1,31 @@
-import type { ITableResponse } from '@/types/normalTable'
-
-import http from './http'
+import { crudApi, insforge, rpaApi } from '@rpa/shared'
 
 // 根据id和version获取原子能力的具体信息
 export async function getAbilityInfo(atomList: { key: string, version: string }[]): Promise<string[]> {
-  const res = await http.post<any[]>('/api/robot/atom-new/list', { keys: atomList.map(i => i.key) })
-  const data = res.data || []
-  return data.map((atom: any) => atom.atomContent)
+  const res = await rpaApi.atoms.getAbilityInfo({ keys: atomList.map(i => i.key) })
+  return (res || []).map((atom: any) => atom.atomContent)
 }
 
 // 获取原子能力左侧菜单数据
 export async function getAtomsMeta(): Promise<RPA.AtomMetaData> {
-  const res = await http.post('/api/robot/atom-new/tree')
-  return JSON.parse(res.data)
+  const res = await rpaApi.atoms.getAtomsMeta()
+  return typeof res === 'string' ? JSON.parse(res) : res
 }
 
 // 获取扩展组件左侧菜单数据
 export async function getModuleMeta(): Promise<RPA.AtomTreeNode[]> {
-  const res = await http.post('/api/robot/atom-new/tree')
-  const data = JSON.parse(res.data)
+  const res = await rpaApi.atoms.getAtomsMeta()
+  const data = typeof res === 'string' ? JSON.parse(res) : res
   return data.atomicTreeExtend ?? []
 }
 
 export function getTreeByParentKey(parentKey: string) {
-  return http.post('/api/robot/atom/getListByParentKey', null, { params: { parentKey } })
+  return rpaApi.atoms.getTreeByParentKey({ parentKey })
 }
 
 export async function getNewAtomDesc(key: string): Promise<{ data: string }> {
-  const res = await http.post<any[]>('/api/robot/atom-new/list', { keys: [key] })
-  const atom = res.data && res.data.length > 0 ? res.data[0] : {}
+  const res = await rpaApi.atoms.getAbilityInfo({ keys: [key] })
+  const atom = res && res.length > 0 ? res[0] : {}
   const { atomContent = '{}' } = atom as any
   return { data: atomContent }
 }
@@ -37,20 +34,24 @@ export async function getNewAtomDesc(key: string): Promise<{ data: string }> {
  * 添加收藏
  */
 export function addFavorite(data: { atomKey: string }) {
-  return http.get('/api/robot/atomLike/create', data)
+  return crudApi.atomLike.create(data)
 }
+
 /**
  * 取消收藏
  */
 export function removeFavorite(data: { likeId: string }) {
-  return http.get('/api/robot/atomLike/cancel', data)
+  return insforge.database.from('atom_like').delete().eq('id', data.likeId)
 }
+
 /**
  * 获取收藏列表
  */
 export async function getFavoriteList() {
-  const res = await http.get<RPA.AtomTreeNode[]>('/api/robot/atomLike/list')
-  return res.data ?? []
+  const { data, error } = await crudApi.atomLike.list()
+  if (error)
+    throw error
+  return data ?? []
 }
 
 /**
@@ -60,8 +61,8 @@ export async function getComponentList(data: {
   robotId: string
   version?: number
 }) {
-  const res = await http.post<RPA.ComponentManageItem[]>('/api/robot/component/editing/list', { ...data, mode: 'EDIT_PAGE' })
-  return res.data ?? []
+  const res = await rpaApi.atoms.getComponentList({ ...data, mode: 'EDIT_PAGE' })
+  return res ?? []
 }
 
 /**
@@ -74,46 +75,52 @@ export async function getConfigParams(params: {
   moduleId?: string
   mode?: string
 }) {
-  const res = await http.post<RPA.ConfigParamData[]>('/api/robot/param/all', params)
-  return res.data
+  const { data, error } = await crudApi.param.list(params)
+  if (error)
+    throw error
+  return data
 }
 
 /**
  * 新增原子能力的配置参数
  */
 export async function createConfigParam(data: RPA.CreateConfigParamData) {
-  const res = await http.post<string>('/api/robot/param/add', data)
-  return res.data
+  const { data: result, error } = await crudApi.param.create(data)
+  if (error)
+    throw error
+  return result
 }
 
 /**
  * 删除原子能力的配置参数
- * @param id 参数id
  */
 export function deleteConfigParam(id: string) {
-  return http.post(`/api/robot/param/delete?id=${id}`)
+  return crudApi.param.delete(id)
 }
 
 /**
  * 更新原子能力的配置参数
- * @param data RPA.ConfigParamData
  */
 export function updateConfigParam(data: RPA.ConfigParamData) {
-  return http.post('/api/robot/param/update', data)
+  return crudApi.param.update(data.id, data)
 }
 
 /**
  * 获取远程共享变量
  */
 export async function getRemoteParams<T>() {
-  const res = await http.get<T[]>('/api/robot/robot-shared-var/get-shared-var')
-  return res.data || []
+  const { data, error } = await crudApi.sharedVar.list()
+  if (error)
+    throw error
+  return data || []
 }
 
 /**
  * 获取卓越中心文件管理共享文件列表
  */
 export async function getRemoteFiles(data?: { pageSize?: number, fileName?: string }) {
-  const res = await http.post<ITableResponse<RPA.SharedFileType>>('/api/robot/robot-shared-file/page', data)
-  return res.data || { records: [], total: 0 }
+  const { data: result, error } = await crudApi.sharedFile.page(data)
+  if (error)
+    throw error
+  return result || { records: [], total: 0 }
 }

@@ -49,8 +49,8 @@ function logCrudCall(table: string, method: string, ...args: unknown[]) {
   console.log(`[crudApi] ${table}.${method}(${brief})`)
 }
 
-function logCrudResult<T>(table: string, method: string, promise: Promise<T>): Promise<T> {
-  return promise.then(
+function logCrudResult<T>(table: string, method: string, promise: PromiseLike<T>): Promise<T> {
+  return Promise.resolve(promise).then(
     (res) => {
       const hasError = res && typeof res === 'object' && 'error' in res && res.error
       if (hasError) {
@@ -82,7 +82,7 @@ function createTableCrud(
   function log(method: string, ...args: unknown[]) {
     logCrudCall(tableName, method, ...args)
   }
-  function wrap<T>(method: string, promise: Promise<T>): Promise<T> {
+  function wrap<T>(method: string, promise: PromiseLike<T>): Promise<T> {
     return logCrudResult(tableName, method, promise)
   }
 
@@ -151,16 +151,32 @@ function authToken(): string | null {
   return sessionStorage.getItem('tokenValue')
 }
 
-// ======== 端点工厂（按后端服务拆分） ========
+// ======== Edge Functions 调用辅助 ========
 
-function endpoint(method: 'get' | 'post' | 'put' | 'delete', url: string) {
-  return (payload?: any, config?: AxiosRequestConfig) => {
-    if (method === 'get' || method === 'delete')
-      return rpaServicesClient[method](url, { ...config, params: payload ?? config?.params })
-
-    return rpaServicesClient[method](url, payload, config)
+async function invokeRpaFunction<T = any>(
+  functionName: string,
+  action: string,
+  payload?: Record<string, unknown>,
+): Promise<T> {
+  console.log(`[rpaFn] ${functionName}:${action}`, payload ? JSON.stringify(payload).slice(0, 120) : '')
+  const { data, error } = await insforge.functions.invoke(functionName, {
+    body: { action, ...(payload || {}) },
+  })
+  if (error) {
+    console.warn(`[rpaFn] ${functionName}:${action} FAILED`, error)
+    throw error
   }
+  // 后端 Edge Functions 返回 { code, data, message }
+  const result = data as { code?: number, data?: T, message?: string } | undefined
+  if (result && typeof result === 'object' && 'code' in result && result.code !== 200) {
+    const err = new Error(result.message || `Edge Function ${functionName}:${action} returned code ${result.code}`)
+    console.warn(`[rpaFn] ${functionName}:${action} ERROR`, err.message)
+    throw err
+  }
+  return (result?.data ?? result) as T
 }
+
+// ======== 端点工厂（按后端服务拆分） ========
 
 function aiEndpoint(method: 'get' | 'post' | 'put' | 'delete', url: string) {
   return (payload?: any, config?: AxiosRequestConfig) => {
@@ -316,10 +332,16 @@ export const rpaApi: any = {
 
   /** ✅ resources — 已迁移到 InsForge Storage API */
   resources: {
-    list: (prefix?: string) => insforge.storage.from('files').list({ prefix, limit: 100 }),
-    upload: (path: string, file: File | Blob) => insforge.storage.from('files').upload(path, file),
-    download: (path: string) => insforge.storage.from('files').download(path),
-    delete: (path: string) => insforge.storage.from('files').remove(path),
+    /** 私有 bucket：rpa-files（用户上传的附件、工作流文件等） */
+    list: (prefix?: string) => insforge.storage.from('rpa-files').list({ prefix, limit: 100 }),
+    upload: (path: string, file: File | Blob) => insforge.storage.from('rpa-files').upload(path, file),
+    download: (path: string) => insforge.storage.from('rpa-files').download(path),
+    delete: (path: string) => insforge.storage.from('rpa-files').remove(path),
+    /** 公开 bucket：rpa-public（头像、市场封面等公开资源） */
+    public: {
+      upload: (path: string, file: File | Blob) => insforge.storage.from('rpa-public').upload(path, file),
+      getPublicUrl: (path: string) => insforge.storage.from('rpa-public').getPublicUrl(path),
+    },
   },
 
   /** ✅ workflows — 已迁移到 InsForge DB (workflows 表) */
@@ -331,16 +353,16 @@ export const rpaApi: any = {
     delete: (id: string | number) => insforgeDelete('workflows', id),
   },
 
-  /** ✅ records — 已迁移到 InsForge DB (executions + execution_logs 表) */
+  /** ✅ records — 已迁移到 InsForge DB (executions + execution_logs 表) + Edge Functions */
   records: {
     list: (params?: Record<string, any>) => insforgeList('executions', params),
     get: (id: string | number) => insforgeGet('executions', id),
     getlogs: (executionId: string) =>
       insforge.database.from('execution_logs').select('*').eq('execution_id', executionId),
-    getExecuteLst: endpoint('post', '/api/robot/robot-record/list'),
-    delExecute: endpoint('post', '/api/robot/robot-record/delete-robot-execute-records'),
-    delTaskExecute: endpoint('post', '/api/robot/task-execute/batch-delete'),
-    getTaskExecuteLst: endpoint('post', '/api/robot/task-execute/list'),
+    getExecuteLst: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'execute-list', params),
+    delExecute: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'execute-delete', params),
+    delTaskExecute: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'task-execute-batch-delete', params),
+    getTaskExecuteLst: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'task-execute-list', params),
   },
 
   /** ✅ robots（部分）— CRUD + EnglishName 已迁移 */
@@ -353,161 +375,170 @@ export const rpaApi: any = {
     delete: (id: string | number) => insforgeDelete('robots', id),
     // AI 翻译 — 通过 ai-service
     getRobotEnglishName: (name: string) => aiServiceClient.post('/v1/chat/prompt', { prompt_type: 'translate', params: { name } }),
-    // 复杂业务 — 待 Edge Functions 迁移
-    getRobotLst: endpoint('post', '/api/robot/robot-execute/execute-list'),
-    isRobotInTask: endpoint('get', '/api/robot/robot-execute/delete-robot-res'),
-    deleteRobot: endpoint('post', '/api/robot/robot-execute/delete-robot'),
-    publishRobot: endpoint('post', '/api/robot/robot-version/publish'),
-    getRobotLastVersion: endpoint('post', '/api/robot/robot-version/latest-info'),
-    getRobotLastIsExternalCall: (robotId: string) => rpaServicesClient.get(`/api/rpa-openapi/workflows/get/${robotId}`),
-    setRobotIsExternalCall: endpoint('post', '/api/rpa-openapi/workflows/upsert'),
-    getRobotUpdateStatus: endpoint('post', '/api/robot/robot-execute/execute-update-check'),
-    updateRobot: endpoint('post', '/api/robot/robot-execute/update/pull'),
-    checkRobotName: endpoint('post', '/api/robot/robot-version/same-name'),
-    getMyRobotDetail: (robotId: string) => rpaServicesClient.get('/api/robot/robot-design/my-robot-detail', { params: { robotId } }),
-    getMarketRobotDetail: (robotId: string) => rpaServicesClient.get('/api/robot/robot-design/market-robot-detail', { params: { robotId } }),
-    getRobotRecordOverview: endpoint('post', '/api/robot/robot-record/detail/overview'),
-    getRobotProcessList: endpoint('post', '/api/robot/process/all-data'),
-    saveRobotConfigParamValue: (paramList: any, mode: string, robotId: string) => rpaServicesClient.post('/api/robot/param/saveUserParam', { paramList, mode, robotId }),
-    getRobotBasicInfo: (robotId: string) => rpaServicesClient.get('/api/robot/robot-execute/robot-detail', { params: { robotId } }),
-    getComponentManageList: (robotId: string) => rpaServicesClient.post('/api/robot/component/editing/manage-list', { robotId, version: 0 }),
-    installComponent: (data: any) => rpaServicesClient.post('/api/robot/component-robot-block/delete', { ...data, mode: 'EDIT_PAGE' }),
-    removeComponent: (data: any) => rpaServicesClient.post('/api/robot/component-robot-block/add', { ...data, mode: 'EDIT_PAGE' }),
-    addComponentUse: (data: any) => rpaServicesClient.post('/api/robot/component-robot-use/add', { ...data, mode: 'EDIT_PAGE' }),
-    deleteComponentUse: (data: any) => rpaServicesClient.post('/api/robot/component-robot-use/delete', { ...data, mode: 'EDIT_PAGE' }),
-    updateComponent: (data: any) => rpaServicesClient.post('/api/robot/component-robot-use/update', { ...data, mode: 'EDIT_PAGE' }),
-    getComponentDetail: (data: any) => rpaServicesClient.post('/api/robot/component/editing/info', { ...data, mode: 'EDIT_PAGE' }),
-    getEditComponentDetail: (data: any) => rpaServicesClient.post('/api/robot/component-robot-use/edit', { ...data, mode: 'EDIT_PAGE' }),
+    // 复杂业务 — 通过 rpa-crud Edge Function
+    getRobotLst: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'execute-list', params),
+    isRobotInTask: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'robot-in-task', params),
+    deleteRobot: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'delete-robot', params),
+    publishRobot: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'publish-robot', params),
+    getRobotLastVersion: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'robot-latest-version', params),
+    getRobotLastIsExternalCall: (robotId: string) => invokeRpaFunction('rpa-crud', 'workflow-get', { robotId }),
+    setRobotIsExternalCall: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'workflow-upsert', params),
+    getRobotUpdateStatus: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'execute-update-check', params),
+    updateRobot: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'robot-update-pull', params),
+    checkRobotName: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'check-robot-name', params),
+    getMyRobotDetail: (robotId: string) => invokeRpaFunction('rpa-crud', 'my-robot-detail', { robotId }),
+    getMarketRobotDetail: (robotId: string) => invokeRpaFunction('rpa-crud', 'market-robot-detail', { robotId }),
+    getRobotRecordOverview: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'record-overview', params),
+    getRobotProcessList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'process-all-data', params),
+    saveRobotConfigParamValue: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'save-user-param', params),
+    getRobotBasicInfo: (robotId: string) => invokeRpaFunction('rpa-crud', 'robot-detail', { robotId }),
+    getComponentManageList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-manage-list', params),
+    installComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-install', params),
+    removeComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-remove', params),
+    addComponentUse: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-use-add', params),
+    deleteComponentUse: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-use-delete', params),
+    updateComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-use-update', params),
+    getComponentDetail: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-detail', params),
+    getEditComponentDetail: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-edit-detail', params),
   },
 
-  /** ⏳ tasks（部分）— taskNotify 已迁移到 Edge Function，其余待迁移 */
+  /** ✅ tasks — 已迁移到 Edge Function rpa-crud */
   tasks: {
-    taskNotify: (data: Record<string, unknown>) => insforge.functions.invoke('notify', { body: data }),
-    getScheduleLst: endpoint('post', '/api/robot/triggerTask/page/list'),
-    checkCronExpression: endpoint('post', '/api/robot/task/corn/check'),
-    taskCancel: endpoint('post', '/scheduler/crontab/cancel'),
-    manualTrigger: endpoint('post', '/trigger/task/run'),
-    taskFutureTime: endpoint('post', '/trigger/task/future'),
-    taskFutureTimeNoCreate: endpoint('post', '/trigger/task/future_with_no_create'),
-    isNameCopy: endpoint('get', '/api/robot/triggerTask/isNameCopy'),
-    getRobotList: endpoint('get', '/api/robot/triggerTask/robotExe/list'),
-    insertTask: endpoint('post', '/api/robot/triggerTask/insert'),
-    getTaskInfo: endpoint('get', '/api/robot/triggerTask/get'),
-    deleteTask: endpoint('get', '/api/robot/triggerTask/delete'),
-    updateTask: endpoint('post', '/api/robot/triggerTask/update'),
-    enableTask: endpoint('get', '/api/robot/triggerTask/enable'),
-    getTaskQueueList: endpoint('get', '/trigger/task/queue/status'),
-    removeTaskQueue: endpoint('post', '/trigger/task/queue/remove'),
-    updateTaskQueueConfig: endpoint('post', '/trigger/task/queue/config'),
-    getTaskQueueConfig: endpoint('get', '/trigger/task/queue/config'),
+    // 旧架构中用于通知 trigger 服务器任务变更，新架构中 CRUD 已通过 Edge Functions 直接操作数据库，不再需要
+    taskNotify: (_data: Record<string, unknown>) => { console.debug('[taskNotify] no-op, task CRUD handled by Edge Functions') },
+    getScheduleLst: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-page-list', params),
+    checkCronExpression: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'cron-check', params),
+    taskCancel: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'crontab-cancel', params),
+    manualTrigger: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-run', params),
+    taskFutureTime: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-future', params),
+    taskFutureTimeNoCreate: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-future-no-create', params),
+    isNameCopy: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-name-copy', params),
+    getRobotList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-robot-list', params),
+    insertTask: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-insert', params),
+    getTaskInfo: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-get', params),
+    deleteTask: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-delete', params),
+    updateTask: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-update', params),
+    enableTask: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-enable', params),
+    getTaskQueueList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-queue-status', params),
+    removeTaskQueue: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-queue-remove', params),
+    updateTaskQueueConfig: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-queue-config-update', params),
+    getTaskQueueConfig: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'trigger-task-queue-config-get', params),
   },
 
   // ==================================================================
-  // ⏳ 待迁移模块（仍走旧网关兼容客户端，需要 Edge Functions 支持）
+  // ✅ 已迁移模块（均通过 Edge Functions / InsForge SDK 调用）
   // ==================================================================
 
-  /** ⏳ market — 待 Edge Functions 迁移 */
+  /** ✅ market — 已迁移到 Edge Function rpa-market */
   market: {
-    getTeams: endpoint('post', '/api/robot/market-team/get-list'),
-    getAppCards: endpoint('post', '/api/robot/market-resource/get-all-app-list'),
-    newTeam: endpoint('post', '/api/robot/market-team/add'),
-    checkMarketNum: endpoint('get', '/api/robot/quota/check-market-join'),
-    canAchieveApp: endpoint('post', '/api/robot/application/use-permission-check'),
-    useApplication: endpoint('post', '/api/robot/application/submit-use-application'),
-    obtainApp: endpoint('post', '/api/robot/market-resource/obtain'),
-    getAppUpdateStatus: endpoint('post', '/api/robot/market-resource/app-update-check'),
-    getAppDetails: endpoint('get', '/api/robot/market-resource/app-detail'),
-    deleteApp: endpoint('get', '/api/robot/market-resource/delete-app'),
-    messageList: endpoint('post', '/api/robot/notify/notify-List'),
-    setMessageReadById: endpoint('get', '/api/robot/notify/set-selected-notify-read'),
-    setAllRead: endpoint('get', '/api/robot/notify/set-all-notify-read'),
-    acceptJoinTeam: endpoint('get', '/api/robot/notify/accept-join-team'),
-    refuseJoinTeam: endpoint('get', '/api/robot/notify/reject-join-team'),
-    teamInfo: endpoint('post', '/api/robot/market-team/info'),
-    editTeamInfo: endpoint('post', '/api/robot/market-team/edit'),
-    leaveTeamMarket: endpoint('post', '/api/robot/market-team/leave'),
-    dissolveTeamMarket: endpoint('post', '/api/robot/market-team/dissolve'),
-    marketUserList: endpoint('post', '/api/robot/market-user/list'),
-    setUserRole: endpoint('post', '/api/robot/market-user/role'),
-    removeUserRole: endpoint('post', '/api/robot/market-user/delete'),
-    getInviteUser: endpoint('post', '/api/robot/market-user/get/user'),
-    getTransferUser: endpoint('post', '/api/robot/market-user/leave/user'),
-    inviteMarketUser: endpoint('post', '/api/robot/market-user/invite'),
-    generateInviteLink: endpoint('post', '/api/robot/market-invite/generate-invite-link'),
-    resetInviteLink: endpoint('post', '/api/robot/market-invite/reset-invite-link'),
-    checkAppToRobotName: endpoint('get', '/api/market-resource/robot-name-duplicated'),
-    getAppFilterLst: endpoint('post', '/api/market-resource/add/robot/list'),
-    getCompanyInfo: endpoint('post', '/api/robot/market-user/dept/user'),
-    getNewMessage: endpoint('get', '/api/robot/notify/hasNotify'),
-    appendixDownload: endpoint('post', '/api/robot/appendix/download'),
-    cancelAppendixDownload: endpoint('post', '/api/robot/download/cancel'),
-    getDeployedAccounts: endpoint('post', '/api/robot/market-resource/deployed-user'),
-    deployApp: endpoint('post', '/api/robot/market-resource/deploy'),
-    pushApp: endpoint('post', '/api/robot/market-resource/update/push'),
-    getPushHistoryVersions: endpoint('post', '/api/robot/market-resource/update/version-list'),
-    unDeployUserList: endpoint('post', '/api/robot/market-user/undeploy-user'),
-    releaseCheck: endpoint('post', '/api/robot/application/pre-release-check'),
-    releaseApplication: endpoint('post', '/api/robot/application/submit-release-application'),
-    releaseCheckWithPublish: endpoint('post', '/api/robot/application/pre-submit-after-publish-check'),
-    releaseWithPublish: endpoint('post', '/api/robot/application/submit-after-publish'),
-    applicationList: endpoint('post', '/api/robot/application/my-application-page-list'),
-    deleteApplication: endpoint('post', '/api/robot/application/my-application-delete'),
-    cancelApplication: endpoint('post', '/api/robot/application/my-application-cancel'),
-    getAllClassification: endpoint('get', '/api/robot/classification/list'),
+    getTeams: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'team-get-list', params),
+    getAppCards: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-get-all-app-list', params),
+    newTeam: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'team-add', params),
+    checkMarketNum: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'quota-check-market-join', params),
+    canAchieveApp: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-use-permission-check', params),
+    useApplication: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-submit-use', params),
+    obtainApp: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-obtain', params),
+    getAppUpdateStatus: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-app-update-check', params),
+    getAppDetails: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-app-detail', params),
+    deleteApp: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-delete-app', params),
+    messageList: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'notify-list', params),
+    setMessageReadById: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'notify-set-selected-read', params),
+    setAllRead: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'notify-set-all-read', params),
+    acceptJoinTeam: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'notify-accept-join-team', params),
+    refuseJoinTeam: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'notify-reject-join-team', params),
+    teamInfo: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'team-info', params),
+    editTeamInfo: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'team-edit', params),
+    leaveTeamMarket: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'team-leave', params),
+    dissolveTeamMarket: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'team-dissolve', params),
+    marketUserList: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-list', params),
+    setUserRole: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-role', params),
+    removeUserRole: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-delete', params),
+    getInviteUser: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-get-user', params),
+    getTransferUser: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-leave-user', params),
+    inviteMarketUser: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-invite', params),
+    generateInviteLink: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-invite-generate-link', params),
+    resetInviteLink: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-invite-reset-link', params),
+    checkAppToRobotName: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-robot-name-duplicated', params),
+    getAppFilterLst: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-add-robot-list', params),
+    getCompanyInfo: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-dept-user', params),
+    getNewMessage: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'notify-has-notify', params),
+    appendixDownload: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'appendix-download', params),
+    cancelAppendixDownload: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'download-cancel', params),
+    getDeployedAccounts: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-deployed-user', params),
+    deployApp: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-deploy', params),
+    pushApp: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-update-push', params),
+    getPushHistoryVersions: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-update-version-list', params),
+    unDeployUserList: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'market-user-undeploy-user', params),
+    releaseCheck: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-pre-release-check', params),
+    releaseApplication: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-submit-release', params),
+    releaseCheckWithPublish: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-pre-submit-after-publish-check', params),
+    releaseWithPublish: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-submit-after-publish', params),
+    applicationList: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-my-page-list', params),
+    deleteApplication: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-my-delete', params),
+    cancelApplication: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'application-my-cancel', params),
+    getAllClassification: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'classification-list', params),
   },
 
-  /** ⏳ projects — 待 Edge Functions 迁移 */
+  /** ✅ projects — 已迁移到 Edge Function rpa-crud */
   projects: {
-    createProject: endpoint('post', '/api/robot/robot-design/create'),
-    checkProjectNum: endpoint('get', '/api/robot/quota/check-designer'),
-    isInTask: endpoint('get', '/api/robot/robot-design/delete-robot-res'),
-    deleteProject: endpoint('post', '/api/robot/robot-design/delete-robot'),
-    getDesignList: endpoint('post', '/api/robot/robot-design/design-list'),
-    shareRobotToMarket: endpoint('post', '/api/robot/market-resource/share'),
-    rename: endpoint('get', '/api/robot/robot-design/rename'),
-    renameCheck: endpoint('get', '/api/robot/robot-design/design-name-dup'),
-    createCopy: endpoint('get', '/api/robot/robot-design/copy-design-robot'),
-    getDefaultName: endpoint('post', '/api/robot/robot-design/create-name'),
-    getComponentList: endpoint('post', '/api/robot/component/page-list'),
-    createComponent: endpoint('get', '/api/robot/component/create'),
-    getDefaultComponentName: endpoint('post', '/api/robot/component/create-name'),
-    checkComponentName: endpoint('post', '/api/robot/component/check-name'),
-    renameComponent: endpoint('get', '/api/robot/component/rename'),
-    deleteComponent: endpoint('get', '/api/robot/component/delete'),
-    createCopyComponentName: endpoint('get', '/api/robot/component/copy/create-name'),
-    createCopyComponent: endpoint('get', '/api/robot/component/copy'),
-    getComponentDetail: endpoint('get', '/api/robot/component/info'),
-    getComponentNextVersion: endpoint('get', '/api/robot/component-version/next-version'),
-    publishComponent: endpoint('post', '/api/robot/component-version/create'),
+    createProject: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-create', params),
+    checkProjectNum: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'quota-check-designer', params),
+    isInTask: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-delete-robot-res', params),
+    deleteProject: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-delete-robot', params),
+    getDesignList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-list', params),
+    shareRobotToMarket: (params?: Record<string, any>) => invokeRpaFunction('rpa-market', 'resource-share', params),
+    rename: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-rename', params),
+    renameCheck: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-name-dup', params),
+    createCopy: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-copy-robot', params),
+    getDefaultName: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'design-create-name', params),
+    getComponentList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-page-list', params),
+    createComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-create', params),
+    getDefaultComponentName: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-create-name', params),
+    checkComponentName: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-check-name', params),
+    renameComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-rename', params),
+    deleteComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-delete', params),
+    createCopyComponentName: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-copy-create-name', params),
+    createCopyComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-copy', params),
+    getComponentDetail: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-info', params),
+    getComponentNextVersion: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-version-next-version', params),
+    publishComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-version-create', params),
   },
 
-  /** ⏳ versions — 待 Edge Functions 迁移 */
+  /** ✅ versions — 已迁移到 Edge Function rpa-crud */
   versions: {
-    getVersionLst: endpoint('get', '/api/robot/robot-version/list4Design'),
-    versionRecover: endpoint('post', '/api/robot/robot-version/recover-version'),
-    versionEnable: endpoint('post', '/api/robot/robot-version/enable-version'),
+    getVersionLst: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'robot-version-list4-design', params),
+    versionRecover: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'robot-version-recover', params),
+    versionEnable: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'robot-version-enable', params),
   },
 
-  /** ⏳ openapi — 待 Edge Functions 迁移 */
+  /** ✅ openapi — 已迁移到 Edge Function rpa-crud */
   openapi: {
-    getWorkflowList: endpoint('get', '/api/rpa-openapi/workflows/get-astron'),
+    getWorkflowList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'workflows-get-astron', params),
   },
 
-  /** ⏳ mail — 待 Edge Functions 迁移 */
+  /** ✅ mail — 已迁移到 Edge Function rpa-crud */
   mail: {
-    list: endpoint('get', '/api/robot/taskMail/page/list'),
-    save: endpoint('post', '/api/robot/taskMail/save'),
-    delete: endpoint('post', '/api/robot/taskMail/delete'),
-    check: endpoint('post', '/api/robot/taskMail/connect'),
+    list: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'task-mail-page-list', params),
+    save: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'task-mail-save', params),
+    delete: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'task-mail-delete', params),
+    check: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'task-mail-connect', params),
   },
 
-  /** ⏳ component — 待 Edge Functions 迁移 */
+  /** ✅ component — 已迁移到 Edge Functions */
   component: {
-    publishComponent: endpoint('post', '/api/robot/component-version/create'),
-    getComponentNextVersion: endpoint('get', '/api/robot/component-version/next-version'),
-    codeToMeta: endpoint('post', '/scheduler/smart/code-to-meta'),
-    saveSmartComp: endpoint('post', '/api/robot/smart/save'),
-    getSmartComp: endpoint('post', '/api/robot/smart/detail/all'),
+    publishComponent: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-version-create', params),
+    getComponentNextVersion: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-version-next-version', params),
+    codeToMeta: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'smart-code-to-meta', params),
+    saveSmartComp: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'smart-save', params),
+    getSmartComp: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'smart-detail-all', params),
     optimizeQuestion: aiEndpoint('post', '/smart/chat'),
+  },
+
+  /** ✅ atoms — 已迁移到 InsForge DB (c_atom_meta_new / c_param / atom_like / shared_var / shared_file) */
+  atoms: {
+    getAbilityInfo: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'atom-list', params),
+    getAtomsMeta: () => invokeRpaFunction('rpa-crud', 'atom-tree'),
+    getTreeByParentKey: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'atom-list-by-parent', params),
+    getComponentList: (params?: Record<string, any>) => invokeRpaFunction('rpa-crud', 'component-editing-list', params),
   },
 }

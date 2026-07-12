@@ -270,3 +270,62 @@ DROP TRIGGER IF EXISTS trg_astron_agent_auth_set_user_id ON public.astron_agent_
 CREATE TRIGGER trg_astron_agent_auth_set_user_id
     BEFORE INSERT ON public.astron_agent_auth
     FOR EACH ROW EXECUTE FUNCTION public.set_user_id();
+
+-- 10. 共享文件表
+CREATE TABLE IF NOT EXISTS public.shared_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES public.projects(id),
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(512) NOT NULL,
+    file_size BIGINT DEFAULT 0,
+    file_type VARCHAR(100),
+    storage_bucket VARCHAR(100) DEFAULT 'rpa-shared',
+    tags JSONB DEFAULT '[]'::jsonb,
+    uploaded_by UUID REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    user_id UUID REFERENCES auth.users(id)
+);
+
+ALTER TABLE public.shared_files ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can access their project's shared files" ON public.shared_files;
+CREATE POLICY "Users can access their project's shared files" ON public.shared_files
+    FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_shared_files_project_id ON public.shared_files(project_id);
+CREATE INDEX IF NOT EXISTS idx_shared_files_user_id ON public.shared_files(user_id);
+
+DROP TRIGGER IF EXISTS trg_shared_files_set_user_id ON public.shared_files;
+CREATE TRIGGER trg_shared_files_set_user_id
+    BEFORE INSERT ON public.shared_files
+    FOR EACH ROW EXECUTE FUNCTION public.set_user_id();
+
+-- 11. 共享变量表
+CREATE TABLE IF NOT EXISTS public.shared_variables (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID REFERENCES public.projects(id),
+    var_name VARCHAR(255) NOT NULL,
+    var_key VARCHAR(255) NOT NULL UNIQUE,
+    var_value TEXT,
+    encrypt BOOLEAN DEFAULT false,
+    sub_vars JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    user_id UUID REFERENCES auth.users(id)
+);
+
+ALTER TABLE public.shared_variables ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can access their project's shared variables" ON public.shared_variables;
+CREATE POLICY "Users can access their project's shared variables" ON public.shared_variables
+    FOR ALL USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_shared_variables_project_id ON public.shared_variables(project_id);
+CREATE INDEX IF NOT EXISTS idx_shared_variables_var_key ON public.shared_variables(var_key);
+CREATE INDEX IF NOT EXISTS idx_shared_variables_user_id ON public.shared_variables(user_id);
+
+DROP TRIGGER IF EXISTS trg_shared_variables_set_user_id ON public.shared_variables;
+CREATE TRIGGER trg_shared_variables_set_user_id
+    BEFORE INSERT ON public.shared_variables
+    FOR EACH ROW EXECUTE FUNCTION public.set_user_id();

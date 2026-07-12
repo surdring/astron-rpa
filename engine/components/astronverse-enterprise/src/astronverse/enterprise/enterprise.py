@@ -1,9 +1,9 @@
 """Enterprise module"""
 
-import base64
 import json
 import os
 import urllib.parse
+import uuid
 from json import JSONDecodeError
 from pathlib import Path
 from typing import Optional
@@ -14,58 +14,59 @@ from astronverse.actionlib.atomic import atomicMg
 from astronverse.actionlib.types import PATH, Ciphertext
 from astronverse.baseline.logger.logger import logger
 from astronverse.enterprise.error import *
+from engine.shared.insforge_client import insforge
 
-cache_remote_var_key: str = ""
-cache_remote_var: dict = {}
+SHARED_FILES_BUCKET = "rpa-shared"
 
 
-def http(shot_url: str, params: Optional[dict], data: Optional[dict], meta: str = "post"):
-    """post 请求"""
-    gateway_port = atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-    logger.debug("请求开始 {}:{}:{}".format(shot_url, params, data))
-    if meta == "post":
-        response = requests.post("http://127.0.0.1:{}{}".format(gateway_port, shot_url), json=data, params=params)
-    else:
-        response = requests.get("http://127.0.0.1:{}{}".format(gateway_port, shot_url), params=params)
-    if response.status_code != 200:
-        raise BaseException(
-            SERVER_ERROR_FORMAT.format(response.status_code), "服务器错误{}".format(response.status_code)
-        )
+def _shared_file_storage_path(user_id: Optional[str], file_name: str) -> str:
+    """生成 Storage 中的唯一路径。"""
+    prefix = user_id or "common"
+    return "shared/{}/{}-{}".format(prefix, uuid.uuid4().hex[:8], file_name)
 
+
+def _current_user_id() -> Optional[str]:
+    """从 InsForge session 获取当前 user_id（仅用于日志/路径前缀）。"""
     try:
-        json_data = response.json()
-    except JSONDecodeError:
-        base64_encoded_data = base64.b64encode(response.content).decode("utf-8")
-        return base64_encoded_data
-    logger.debug("请求结束 {}:{}".format(shot_url, json_data))
-    if json_data.get("code") != "0000" and json_data.get("code") != "000000":
-        msg = json_data.get("message", "")
-        raise BaseException(SERVER_ERROR_FORMAT.format(msg), "服务器错误{}".format(json_data))
-    return json_data.get("data", {})
+        resp = insforge.query_table("auth.users", select="id", single=True)
+        if resp.status_code == 200:
+            return resp.json().get("id")
+    except Exception:
+        pass
+    return None
 
 
 def get_remote_var_key() -> str:
-    global cache_remote_var_key
-    if cache_remote_var_key:
-        return cache_remote_var_key
-
-    res = http("/api/robot/robot-shared-var/shared-var-key", None, None, "get")
-    cache_remote_var_key = res.get("key", "")
-    return cache_remote_var_key
+    """获取当前用户的共享变量主密钥。"""
+    resp = insforge.query_table(
+        "shared_variables",
+        select="var_key",
+        filters={"var_name": "__master_key__"},
+        single=True,
+    )
+    logger.info("get_remote_var_key response: status=%s", resp.status_code)
+    if resp.status_code == 200:
+        data = resp.json()
+        return data.get("var_key", "")
+    return ""
 
 
 def get_remote_var_value(key: str) -> dict:
-    global cache_remote_var
-
-    if key in cache_remote_var:
-        return cache_remote_var[key]
-
-    res = http("/api/robot/robot-shared-var/get-batch-shared-var", None, {"ids": [key]}, "post")
-    if res:
-        cache_remote_var[key] = res[0]
-    else:
-        cache_remote_var[key] = None
-    return cache_remote_var[key]
+    """根据 key 获取共享变量值。"""
+    resp = insforge.query_table(
+        "shared_variables",
+        select="sub_vars,encrypt",
+        filters={"var_key": key},
+        single=True,
+    )
+    logger.info("get_remote_var_value response: key=%s status=%s", key, resp.status_code)
+    if resp.status_code == 200:
+        data = resp.json()
+        return {
+            "subVarList": data.get("sub_vars", []),
+            "encrypt": data.get("encrypt", False),
+        }
+    return None
 
 
 class Enterprise:
@@ -86,69 +87,52 @@ class Enterprise:
         outputList=[atomicMg.param("upload_result", types="Str")],
     )
     def upload_to_sharefolder(file_path: PATH = ""):
-        """Upload file to shared folder"""
-        upload_url = "http://127.0.0.1:{}/api/resource/file/shared-file-upload".format(
-            atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-        )
-        update_info_url = "http://127.0.0.1:{}/api/robot/robot-shared-file/addSharedFileInfo".format(
-            atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-        )
-        # 检查文件是否存在
+        """Upload file to InsForge Storage and record metadata in shared_files table."""
+        logger.info("upload_to_sharefolder start: path=%s", file_path)
         if not (os.path.exists(file_path) and os.path.isfile(file_path)):
             return BaseException(PATH_INVALID_FORMAT.format(file_path), "请重新输入正确的文件路径")
 
         try:
-            # 准备文件上传
-            with open(file_path, "rb") as file:
-                files = {
-                    "file": (
-                        os.path.basename(file_path),
-                        file,
-                        "application/octet-stream",
-                    )
-                }
-                data = {"fileId": "", "tags": ""}
-                # 发送POST请求
-                response = requests.post(upload_url, files=files, data=data, timeout=30)
-                if response.status_code == 200:
-                    logger.info(f"请求返回值：{response.text}")
-                    inner_data = json.loads(response.text)
-                    if inner_data.get("code") in ["999999", "500000"]:
-                        raise BaseException(
-                            FILE_UPLOAD_FAILED_FORMAT.format(response.text),
-                            "可能用了不支持的扩展名！",
-                        )
-                    info_data = {
-                        "fileId": inner_data.get("data").get("fileid"),
-                        "fileType": inner_data.get("data").get("type"),
-                        "fileName": inner_data.get("data").get("fileName"),
-                        "tags": [],
-                    }
-                    info_response = requests.post(update_info_url, json=info_data, timeout=30)
-                    if info_response.status_code == 200:
-                        logger.info(info_response.text)
-                        if info_response.json().get("code") != "000000":
-                            raise BaseException(
-                                FILE_UPLOAD_FAILED_FORMAT.format(info_response.json().get("message")),
-                                "文件已存在或更新文件信息失败！",
-                            )
-                        return "上传成功"
-                    else:
-                        logger.info(
-                            f"上传成功，但更新文件信息失败，状态码：{info_response.status_code}，响应：{info_response.text}"
-                        )
-                        raise BaseException(
-                            FILE_UPLOAD_FAILED_FORMAT.format(info_response.text),
-                            "请检查更新文件信息接口！",
-                        )
-                else:
-                    logger.info(f"上传失败，状态码：{response.status_code}，响应：{response.text}")
-                    raise BaseException(
-                        FILE_UPLOAD_FAILED_FORMAT.format(response.text),
-                        "请检查上传接口！",
-                    )
+            file_name = os.path.basename(file_path)
+            user_id = _current_user_id()
+            storage_path = _shared_file_storage_path(user_id, file_name)
+
+            # 1. 上传到 InsForge Storage
+            logger.info(
+                "upload_to_sharefolder uploading: bucket=%s path=%s local=%s",
+                SHARED_FILES_BUCKET, storage_path, file_path,
+            )
+            upload_resp = insforge.upload_file(SHARED_FILES_BUCKET, storage_path, file_path)
+            logger.info("upload_to_sharefolder upload response: status=%s", upload_resp.status_code)
+            if upload_resp.status_code not in (200, 201):
+                raise BaseException(
+                    FILE_UPLOAD_FAILED_FORMAT.format(upload_resp.text),
+                    "文件上传失败，请检查 Storage 服务！",
+                )
+
+            # 2. 写入 shared_files 表
+            file_size = os.path.getsize(file_path)
+            file_ext = os.path.splitext(file_name)[1].lstrip(".").lower()
+            record = {
+                "file_name": file_name,
+                "file_path": storage_path,
+                "file_size": file_size,
+                "file_type": file_ext,
+                "storage_bucket": SHARED_FILES_BUCKET,
+                "tags": [],
+            }
+            logger.info("upload_to_sharefolder insert record: %s", record)
+            ins_resp = insforge.insert_record("shared_files", record)
+            logger.info("upload_to_sharefolder insert response: status=%s", ins_resp.status_code)
+            if ins_resp.status_code not in (200, 201):
+                raise BaseException(
+                    FILE_UPLOAD_FAILED_FORMAT.format(ins_resp.text),
+                    "文件已上传但元数据写入失败！",
+                )
+
+            return "上传成功"
         except Exception as e:
-            logger.error(f"上传过程中发生错误：{str(e)}")
+            logger.exception("upload_to_sharefolder error: %s", e)
             raise BaseException(FILE_UPLOAD_FAILED_FORMAT.format(e), "")
 
     @staticmethod
@@ -169,75 +153,59 @@ class Enterprise:
         ],
         outputList=[atomicMg.param("download_result", types="Str")],
     )
-    def download_from_sharefolder(file_path: int, save_folder: PATH = ""):
-        """Download file from shared folder"""
-        download_url = "http://127.0.0.1:{}/api/resource/file/download".format(
-            atomicMg.cfg().get("GATEWAY_PORT") if atomicMg.cfg().get("GATEWAY_PORT") else "13159"
-        )
-        # 检查 save_folder 路径是否是绝对路径
+    def download_from_sharefolder(file_path: str, save_folder: PATH = ""):
+        """Download file from InsForge Storage by shared_files id or storage path."""
+        logger.info("download_from_sharefolder start: file_path=%s save_folder=%s", file_path, save_folder)
         if not Path(save_folder).is_absolute():
-            raise Exception(f"文件夹路径错误：{save_folder} 不是绝对路径")
-        # 检查保存文件夹是否存在，如果不存在则创建
+            raise Exception("文件夹路径错误：{} 不是绝对路径".format(save_folder))
         if not os.path.exists(save_folder):
             os.makedirs(save_folder)
-
-        # 检查保存路径是否为目录
         if not os.path.isdir(save_folder):
-            raise Exception(f"文件夹路径错误：{save_folder} 不是文件夹路径")
+            raise Exception("文件夹路径错误：{} 不是文件夹路径".format(save_folder))
 
         try:
-            params = {"fileId": file_path}
-            response = requests.get(download_url, params=params, timeout=30, stream=True)
+            # file_path 可能是 shared_files.id（UUID）或 storage_path
+            storage_path = file_path
+            file_name = None
+            candidate = str(file_path).strip()
+            if len(candidate) == 36 and candidate.count("-") == 4:
+                resp = insforge.query_table(
+                    "shared_files",
+                    select="file_name,file_path",
+                    filters={"id": candidate},
+                    single=True,
+                )
+                logger.info("download_from_sharefolder query record: status=%s", resp.status_code)
+                if resp.status_code == 200:
+                    meta = resp.json()
+                    storage_path = meta.get("file_path")
+                    file_name = meta.get("file_name")
 
-            # 检查响应状态
-            if response.status_code != 200:
-                logger.error(f"下载失败，状态码：{response.status_code}，响应：{response.text}")
-                raise BaseException(FILE_DOWNLOAD_FAILED_FORMAT.format(response.text), "请检查下载接口！")
+            if not storage_path:
+                raise Exception("未找到对应的共享文件")
 
-            content_type = response.headers.get("Content-Type", "").lower()
-            if "application/json" in content_type:
-                error = response.json()
-                if not error.get("success"):
-                    raise BaseException(
-                        FILE_DOWNLOAD_FAILED_FORMAT.format(error.get("message", "")), "请检查下载接口！"
-                    )
-            elif "application/octet-stream" in content_type:
-                # 从响应头中获取文件名，如果没有则使用默认名称
-                content_disposition = response.headers.get("content-disposition", "")
-                if "filename=" in content_disposition:
-                    filename = content_disposition.split("filename=")[1].strip('"')
-                    # 对文件名进行URL解码，解决中文文件名问题
-                    try:
-                        filename = urllib.parse.unquote(filename)
-                    except Exception as e:
-                        logger.info(f"解码失败：{e}")
-                        pass  # 如果解码失败，使用原始文件名
-                else:
-                    filename = f"downloaded_file_{file_path}"
+            if not file_name:
+                file_name = urllib.parse.unquote(os.path.basename(storage_path))
 
-                # 构建完整的保存路径
-                save_path = os.path.join(save_folder, filename)
-                # 文件已存在，重命名文件
-                if os.path.exists(save_path):
-                    base, ext = os.path.splitext(filename)
-                    count = 1
-                    while os.path.exists(save_path):
-                        new_filename = f"{base}({count}){ext}"
-                        save_path = os.path.join(save_folder, new_filename)
-                        count += 1
-                # 保存文件
-                with open(save_path, "wb") as file:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            file.write(chunk)
+            save_path = os.path.join(save_folder, file_name)
+            if os.path.exists(save_path):
+                base, ext = os.path.splitext(file_name)
+                count = 1
+                while os.path.exists(save_path):
+                    new_filename = "{}({}){}".format(base, count, ext)
+                    save_path = os.path.join(save_folder, new_filename)
+                    count += 1
 
-                logger.info(f"下载成功：文件已保存到 {save_path}")
-                return save_path
-            else:
-                raise NotImplementedError()
+            logger.info(
+                "download_from_sharefolder downloading: bucket=%s path=%s -> %s",
+                SHARED_FILES_BUCKET, storage_path, save_path,
+            )
+            insforge.download_file(SHARED_FILES_BUCKET, storage_path, save_path)
+            logger.info("download_from_sharefolder success: %s", save_path)
+            return save_path
         except Exception as e:
-            logger.error(f"下载过程中发生错误：{str(e)}")
-            raise BaseException(FILE_UPLOAD_FAILED_FORMAT.format(e), "")
+            logger.exception("download_from_sharefolder error: %s", e)
+            raise BaseException(FILE_DOWNLOAD_FAILED_FORMAT.format(e), "")
 
     # 获取远程变量
     @staticmethod
@@ -260,6 +228,9 @@ class Enterprise:
         """
         key = get_remote_var_key()
         value = get_remote_var_value(shared_variable)
+
+        if not value:
+            return None
 
         sub_var_list = value.get("subVarList", [])
         if not sub_var_list:

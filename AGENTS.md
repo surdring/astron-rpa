@@ -28,7 +28,8 @@ includes under `makefiles/`).
     services (Maven; each ships `checkstyle.xml`, `pmd-ruleset.xml`,
     `spotbugs-exclude.xml`).
     - `rpa-auth/` 已被 InsForge Auth 替代
-    - `robot-service/`、`resource-service/` 过渡期保留，通过 `VITE_RPA_SERVICES_URL` 访问
+    - `robot-service/` 已被 InsForge DB + Edge Functions 替代
+    - `resource-service/` 已被 InsForge Storage + DB 替代
   - `ai-service/`, `openapi-service/` — Python services (managed with `uv`).
     - 过渡期保留，通过 InsForge API 远程验证 JWT（`AUTH_VERIFY_MODE=remote`）
 - `engine/` — the Python RPA execution engine (managed with `uv`, linted with
@@ -38,11 +39,19 @@ includes under `makefiles/`).
   i18n under `locales/`). Notable packages under `frontend/packages/`:
   `electron-app` (desktop client), `web-app` (web console), `browser-plugin`,
   `auth-app`, `cli`, `components`, `shared`.
-- `functions/` — Edge Functions（Deno TypeScript，部署到 InsForge Deno 运行时 `:7133`）:
+- `functions/` — Edge Functions 源码参考（Deno TypeScript，部署到 InsForge Deno 运行时 `:7133`）。
+  **注意：此目录仅作为源码参考，禁止在此目录进行 Edge Function 开发或修改！**
+  Edge Functions 的实际源码和开发环境在远程服务器 `172.16.100.211` 上
+  （`/home/zhengxueen/github-project/InsForge/functions/astron-rpa/`），
+  修改后需通过 InsForge Dashboard 或 MCP 工具重新部署。
   - `notify/index.ts` — 通知发送（email/sms/in_app）
   - `blacklist/index.ts` — 黑名单检查（user_id/email/ip）
+  - `rpa-terminal/index.ts` — RPA 终端注册/心跳
+  - `rpa-execution/index.ts` — RPA 执行结果上报
+  - `rpa-crud/index.ts` — RPA 通用业务 CRUD（机器人/流程/组件/版本/任务等）
+  - `rpa-market/index.ts` — RPA 市场/团队/应用发布
   - `deno.json` — Deno TypeScript 配置
-- `docker/` — Docker Compose manifests（保留服务，已逐步去容器化）。
+- `docker/` — Docker Compose manifests（已废弃，不再使用 Docker 部署）。
 - `makefiles/` — modular Make components (`common.mk`, `python.mk`, `java.mk`,
   `typescript.mk`, `go.mk`, `git.mk`).
 - `resources/` — packaged client resources. `docs/`, `FAQ.md`, `BUILD_GUIDE.md`
@@ -54,7 +63,6 @@ includes under `makefiles/`).
 - **Python 3.13.x** + **uv 0.8+** — RPA engine and Python services.
 - **Node.js 22+** + **pnpm 9+** — frontend workspace.
 - **Java JDK 8+** + **Maven** — Java backend services.
-- **Docker & Docker Compose** — server deployment.
 - Windows client packaging also needs **SWIG** (Python↔C/C++ bindings, e.g.
   `pywinhook`) and **7-Zip** (deployment archives). See `BUILD_GUIDE.md`.
 
@@ -74,7 +82,7 @@ see detected projects and targets):
 Pre-commit hooks (install with `pre-commit install`) format the engine with
 ruff: `uv run --project engine --dev ruff format ./engine`.
 
-### Backend（无 Docker 双进程架构）
+### Backend（无 Docker 双进程架构 — 替代原 7 容器架构）
 
 InsForge 后端部署在远程服务器 `172.16.100.211`（源码部署 + systemd），提供认证、数据库、存储、Edge Functions 等全部后端能力：
 
@@ -87,20 +95,26 @@ sudo systemctl status insforge.service
 # Deno Edge Functions: http://172.16.100.211:7133
 ```
 
-过渡期保留的 AstronRPA 服务（robot-service、resource-service、ai-service、openapi-service）部署在 `172.16.100.211` 上，通过环境变量 `INSFORGE_API_URL` 远程验证 JWT：
+**无 Docker 部署要点**：
+- 后端仅需 2 个长期进程：**InsForge**（BaaS，端口 `:7130`）+ **PostgreSQL**（数据库）
+- 过渡期保留的 Python 服务（ai-service、openapi-service）直接部署在 `172.16.100.211` 上，不使用 Docker 容器
+- 前端通过 `@insforge/sdk` 直连 `:7130`，引擎通过 `insforge_client.py` 直连 `:7130`
+- 单端口（`:7130`）对外暴露，无 OpenResty 网关、无 Docker 容器依赖
 
-```bash
-# 过渡期配置（docker/.env.example）
-AUTH_VERIFY_MODE=remote        # Python 服务通过 InsForge API 远程验证 JWT
-INSFORGE_API_URL=http://172.16.100.211:7130
-JWT_SECRET=...                  # 与 InsForge JWT_SECRET 一致
-```
+**废弃的 Docker 服务对照**：
 
-**架构要点**：
-- 前端（`@insforge/sdk`）直连 `:7130`，不走网关
-- 引擎（`insforge_client.py`）直连 `:7130`
-- 过渡期保留的 Java/Python 服务也直连 `:7130`（远程 JWT 验证）
-- 单端口（`:7130`）对外暴露，无 Docker 容器依赖
+| 旧服务 | 状态 | 替代方案 |
+|--------|------|----------|
+| `mysql` | ❌ 废弃 | PostgreSQL（InsForge 内置） |
+| `redis` | ❌ 废弃 | 已移除 |
+| `minio` | ❌ 废弃 | InsForge Storage |
+| `casdoor` | ❌ 废弃 | InsForge Auth |
+| `openresty-nginx` | ❌ 废弃 | 无网关，直连 `:7130` |
+| `rpa-auth` | ❌ 废弃 | InsForge Auth |
+| `resource-service` | ❌ 废弃 | InsForge Storage + `shared_files` 表 |
+| `robot-service` | ❌ 废弃 | InsForge DB + Edge Functions |
+| `ai-service` | ✅ 过渡期保留 | 直接部署，通过 InsForge 远程验证 JWT |
+| `openapi-service` | ⏸ 暂停 | 依赖 MySQL，暂不启动 |
 
 ### Build the client (Windows)
 
@@ -267,3 +281,4 @@ Before writing or editing any InsForge integration code, call InsForge MCP's `fe
 - Storage: Upload files to buckets, store URLs in database
 - AI integrations call OpenRouter directly with `baseURL: "https://openrouter.ai/api/v1"` and a server-side `OPENROUTER_API_KEY`
 - **Extra Important**: Use Tailwind CSS 3.4 (do not upgrade to v4). Lock these dependencies in `package.json`
+- **Edge Function 开发禁令**：本仓库 `functions/` 目录仅作为源码参考，禁止在此目录进行任何 Edge Function 开发或修改。Edge Functions 的实际开发环境在 `172.16.100.211` 上。如需更新已部署的 Edge Function，只能通过 MCP 工具（`mcp_insforge` 的 `update-function`）进行部署，且部署脚本文件应在操作完成后立即删除，不得留在本仓库中。

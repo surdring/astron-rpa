@@ -14,7 +14,7 @@ function ctrlPreventDefault(e: KeyboardEvent) {
 function shortCutPreventDefault(e: KeyboardEvent) {
   const key = e.key?.toLowerCase() ?? ''
   const ctrlKeys = ['s', 'j', 'r', 'f', 'g', 'p', 'u', 'z']
-  const fkeys = ['f5', 'f3', 'f7', 'f12']
+  const fkeys = ['f5', 'f3', 'f7']
   const otherKeys = ['tab']
 
   if (ctrlKeys.includes(key)) {

@@ -173,8 +173,8 @@ services:
       - ./volumes/nginx/lua:/usr/local/openresty/nginx/lua:ro
       - ./logs/nginx:/usr/local/openresty/nginx/logs
     depends_on:
-      - resource-service
-      - robot-service
+      # - resource-service  # 已废弃，功能迁移到 InsForge Storage
+      # - robot-service     # 已废弃，功能迁移到 InsForge DB + Edge Functions
       - ai-service
       - openapi-service
       - rpa-auth
@@ -260,51 +260,53 @@ services:
     networks:
       - rpa-opensource-network
 
-  resource-service:
-    image: ghcr.io/iflytek/astron-rpa/resource-service:latest
-    # build:
-    #  context: ..
-    #  dockerfile: backend/resource-service/Dockerfile
-    container_name: rpa-opensource-resource-service
-    restart: always
-    env_file: *env_file
-    # ports:
-    #   - "8030:8030"
-    volumes:
-      - ./logs/resource-service:/app/logs
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      casdoor:
-        condition: service_started
-    networks:
-      - rpa-opensource-network
+  # resource-service 已废弃，文件管理功能迁移到 InsForge Storage
+  # resource-service:
+  #   image: ghcr.io/iflytek/astron-rpa/resource-service:latest
+  #   build:
+  #     context: ..
+  #     dockerfile: backend/resource-service/Dockerfile
+  #   container_name: rpa-opensource-resource-service
+  #   restart: always
+  #   env_file: *env_file
+  #   ports:
+  #     - "8030:8030"
+  #   volumes:
+  #     - ./logs/resource-service:/app/logs
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
+  #     casdoor:
+  #       condition: service_started
+  #   networks:
+  #     - rpa-opensource-network
 
-  robot-service:
-    image: ghcr.io/iflytek/astron-rpa/robot-service:latest
-    # build:
-    #  context: ..
-    #  dockerfile: backend/robot-service/Dockerfile
-    container_name: rpa-opensource-robot-service
-    restart: always
-    env_file: *env_file
-    # ports:
-    #   - "8040:8040"
-    volumes:
-      - ./logs/robot-service:/app/logs
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      casdoor:
-        condition: service_started
-    networks:
-      - rpa-opensource-network
+  # robot-service 已废弃，业务逻辑迁移到 InsForge DB + Edge Functions
+  # robot-service:
+  #   image: ghcr.io/iflytek/astron-rpa/robot-service:latest
+  #   build:
+  #     context: ..
+  #     dockerfile: backend/robot-service/Dockerfile
+  #   container_name: rpa-opensource-robot-service
+  #   restart: always
+  #   env_file: *env_file
+  #   ports:
+  #     - "8040:8040"
+  #   volumes:
+  #     - ./logs/robot-service:/app/logs
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     casdoor:
+  #       condition: service_started
+  #   networks:
+  #     - rpa-opensource-network
 
   rpa-auth:
     image: ghcr.io/iflytek/astron-rpa/rpa-auth:latest

@@ -2,6 +2,7 @@ interface ImportMetaEnv {
   readonly VITE_INSFORGE_URL?: string
   readonly VITE_INSFORGE_ANON_KEY?: string
   readonly VITE_RPA_SERVICES_URL?: string
+  readonly VITE_AI_SERVICE_URL?: string
 }
 
 interface ImportMeta {
