@@ -1,14 +1,16 @@
 // Edge Function: Blacklist Checking
+// Adapted for InsForge Worker Runtime (exports handler, no Deno.serve)
 // Uses InsForge SDK for database access
-
-import { createClient } from 'npm:@insforge/sdk';
-
-const INSFORGE_BASE_URL = Deno.env.get('INSFORGE_BASE_URL') || 'http://172.16.100.211:7130';
-const ANON_KEY = Deno.env.get('ANON_KEY') || '';
+//
+// Required env vars (set via InsForge secrets):
+//   INSFORGE_BASE_URL, ANON_KEY
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const IP_REGEX = /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
 const MAX_CHECK_ITEMS = 10;
+
+const INSFORGE_BASE_URL = Deno.env.get('INSFORGE_BASE_URL') || 'http://172.16.100.211:7130';
+const ANON_KEY = Deno.env.get('ANON_KEY') || '';
 
 interface BlacklistCheckRequest {
   user_id?: string;
@@ -69,7 +71,8 @@ async function checkBlacklist(
   return Array.isArray(data) && data.length > 0;
 }
 
-Deno.serve(async (req: Request) => {
+// Handler function - called by InsForge Worker Runtime
+module.exports = async function blacklistHandler(req: Request): Promise<Response> {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -153,4 +156,4 @@ Deno.serve(async (req: Request) => {
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
-});
+};

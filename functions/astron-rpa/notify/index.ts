@@ -1,10 +1,9 @@
 // Edge Function: Notification Sending
+// Adapted for InsForge Worker Runtime (exports handler, no Deno.serve)
 // Uses InsForge SDK for database access
-
-import { createClient } from 'npm:@insforge/sdk';
-
-const INSFORGE_BASE_URL = Deno.env.get('INSFORGE_BASE_URL') || 'http://172.16.100.211:7130';
-const ANON_KEY = Deno.env.get('ANON_KEY') || '';
+//
+// Required env vars (set via InsForge secrets):
+//   INSFORGE_BASE_URL, ANON_KEY
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^\+?[1-9]\d{6,14}$/;
@@ -27,6 +26,9 @@ interface NotifyResponse {
   type: string;
   notification_id?: string;
 }
+
+const INSFORGE_BASE_URL = Deno.env.get('INSFORGE_BASE_URL') || 'http://172.16.100.211:7130';
+const ANON_KEY = Deno.env.get('ANON_KEY') || '';
 
 function validateRequest(body: NotifyRequest): string[] {
   const errors: string[] = [];
@@ -154,7 +156,8 @@ async function sendInApp(
   return { success: true, message: 'In-app notification stored', notification_id: notificationId };
 }
 
-Deno.serve(async (req: Request) => {
+// Handler function - called by InsForge Worker Runtime
+module.exports = async function notifyHandler(req: Request): Promise<Response> {
   // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -248,4 +251,4 @@ Deno.serve(async (req: Request) => {
     status: result.success ? 200 : 500,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
-});
+};
