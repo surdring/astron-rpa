@@ -19,10 +19,9 @@ export function getBaseURL(): string {
   if (RPA_SERVICES_URL)
     return RPA_SERVICES_URL.replace(/\/$/, '')
 
-  // InsForge 认证模式下直连 InsForge BaaS 后端
-  if (AUTH_TYPE === 'insforge' && INSFORGE_URL)
-    return INSFORGE_URL.replace(/\/$/, '')
-
+  // 本地引擎服务地址：始终从本地端口或默认端口获取
+  // 注意：InsForge URL（172.16.100.211:7130）仅用于 SDK/Edge Functions，
+  // 本地 HTTP 客户端（/scheduler/、/api/rpa-openapi/ 等）必须连接本机引擎
   const port = Number(storage.get('route_port')) || DEFAULT_PORT
   return `http://${DEFAULT_HOST}:${port}`
 }

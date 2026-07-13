@@ -3,6 +3,7 @@ import { blob2Text } from '@/utils/common'
 
 import { fileRead, fileWrite } from '@/api/resource'
 import type { ITableResponse } from '@/types/normalTable'
+import http from './http'
 
 const useSettingPath = './.setting.json'
 
@@ -25,7 +26,7 @@ export async function setUserSetting(params: RPA.UserSetting) {
  * @returns 获取自动启动状态
  */
 export async function autoStartStatus() {
-  const res = await rpaApi.http.post<{ autostart: boolean }>('/scheduler/window/auto_start/check', null)
+  const res = await http.post<{ autostart: boolean }>('/scheduler/window/auto_start/check', null)
 
   return res.data.autostart
 }
@@ -33,26 +34,26 @@ export async function autoStartStatus() {
  * @returns 设置自动启动
  */
 export function autoStartEnable() {
-  return rpaApi.http.post('/scheduler/window/auto_start/enable', null)
+  return http.post('/scheduler/window/auto_start/enable', null)
 }
 /**
  * @returns 关闭自动启动
  */
 export function autoStartDisable() {
-  return rpaApi.http.post('/scheduler/window/auto_start/disable', null)
+  return http.post('/scheduler/window/auto_start/disable', null)
 }
 /**
  * @returns 检查视频文件是否存在
  */
 export function checkVideoPaths(data) {
-  return rpaApi.http.post('/scheduler/video/play', data, { toast: false })
+  return http.post('/scheduler/video/play', data, { toast: false })
 }
 
 /**
  * @description: 邮箱短信设置
  */
 export function toolsInterfacePost(data) {
-  return rpaApi.http.post('/scheduler/alert/test', data)
+  return http.post('/scheduler/alert/test', data)
 }
 
 /**

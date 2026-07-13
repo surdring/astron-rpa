@@ -91,8 +91,13 @@ export function useMessageTip() {
 
   // 刷新消息
   const refresh = async () => {
-    const { data } = await rpaApi.market.getNewMessage()
-    hasBadage.value = data
+    try {
+      const { data } = await rpaApi.market.getNewMessage()
+      hasBadage.value = data
+    }
+    catch {
+      // 消息通知 Edge Function 尚未部署，静默处理
+    }
   }
 
   const toastMessage = (data, custom, id?) => {
